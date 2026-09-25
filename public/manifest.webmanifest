@@ -1,0 +1,75 @@
+{
+  "id": "/",
+  "name": "LifeOS — Il tuo spazio personale",
+  "short_name": "LifeOS",
+  "description": "Uno spazio personale per ciò che conta.",
+  "lang": "it",
+  "dir": "ltr",
+  "start_url": "/today",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#f7f8f4",
+  "theme_color": "#28533d",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/pwa/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/pwa/monochrome.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "monochrome"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Apri Oggi",
+      "short_name": "Oggi",
+      "url": "/today"
+    },
+    {
+      "name": "Preferenze offline",
+      "short_name": "Offline",
+      "url": "/offline.html"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/pwa/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Preferenze LifeOS — account dimostrativo"
+    },
+    {
+      "src": "/pwa/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "LifeOS su mobile — account dimostrativo"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+# Architecture
+
+Browser → Next.js server components / typed Route Handlers → session guard → domain services → Drizzle → PostgreSQL.
+The root server layout emits a nonce-based CSP. Protected layouts and every private API independently verify database sessions. Proxy supplies security headers, not authorization. No bearer secrets reach client components.
+
+## M1
+
+Auth.js Google OIDC validates issuer/audience/nonce from the authenticated server-side token exchange and invokes a strict allowlist callback before writes. A small Drizzle-backed adapter additionally validates creation/linking. Database tokens are hashed; durable session metadata tracks creation, expiry and activity. Preferences have optimistic version preconditions to prevent lost edits. Audit entries cover settings changes and session revocation without copying sensitive contents. Postgres buckets provide process-independent rate limiting.
+Server components load the principal and settings. next-intl supplies Italian and English messages. Radix controls, Tailwind tokens, shadcn-style local components and reduced-motion-aware animation form the UI layer.
+
+## Roadmap boundaries
+
+M2 is implemented: Dexie stores AES-GCM encrypted snapshots and a durable mutation queue. TanStack Query exposes optimistic reads/writes; authenticated sync reconciles per-field clocks and transactional idempotency receipts. Serwist caches only public assets and provides a generic offline document. See OFFLINE.md for the authorization and key lifecycle.
+M3: tasks/projects domain and deterministic offline capture. M4: Calendar incremental consent, encrypted tokens, watch channels with authenticated channel secrets and pg-boss polling. M5: finance minor-unit arithmetic and import dedupe. M6: travel/notes/commitments. M7: AI provider abstraction, validated tools, read execution and expiring server-side proposed writes requiring confirmation. M8: push, app lock, portability and hardening.
+All feature writes will append audit entries and mutation receipts in a transaction. A queue worker runs separately from the web process; Vercel deployment requires an external persistent worker. No provider scope beyond identity is requested until its module is enabled.
+
+## Deployment and testing
+
+Docker runs standalone Next.js as an unprivileged user, alongside PostgreSQL. Migrations run explicitly before traffic. Vercel uses a managed PostgreSQL connection and Node runtime; never use an ephemeral local database. Keep encryption keys in a secret manager with backups and rotation procedures.
+Vitest tests pure security and validation logic; PostgreSQL integration tests exercise the real adapter. Playwright uses real HTTP requests and an isolated signed OIDC issuer for allowed/rejected users. MSW supplies external HTTP mocks for unit tests. CI runs all checks and scope/bundle/dependency audits.

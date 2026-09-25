@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env*
+coverage
+work
+playwright-report
+test-results
+
+.local/
+google-client*.json

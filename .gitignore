@@ -1,0 +1,17 @@
+node_modules/
+.next/
+.env*
+!.env.example
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+work/
+
+public/sw.js
+public/offline.html
+public/pwa/offline.js
+public/pwa/offline.css
+
+.local/
+google-client*.json

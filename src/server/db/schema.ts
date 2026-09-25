@@ -1,0 +1,135 @@
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  integer,
+  jsonb,
+  index,
+  uniqueIndex,
+  check,
+} from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { v7 as uuidv7 } from 'uuid';
+import type { FieldClocks } from '@/features/sync/schema';
+import type { Preferences } from '@/features/settings/schema';
+const metadata = () => ({
+  id: uuid('id').primaryKey().$defaultFn(uuidv7),
+  userId: uuid('user_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  version: integer('version').default(1).notNull(),
+});
+export const users = pgTable(
+  'users',
+  {
+    ...metadata(),
+    email: text('email').notNull().unique(),
+    name: text('name'),
+    image: text('image'),
+    emailVerified: timestamp('email_verified_at', { withTimezone: true }),
+  },
+  (t) => [
+    check('user_owns_self', sql`${t.id} = ${t.userId}`),
+    check('users_version_positive', sql`${t.version} > 0`),
+  ],
+);
+export const accounts = pgTable(
+  'accounts',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    providerAccountId: text('provider_account_id').notNull(),
+    type: text('type').notNull(),
+  },
+  (t) => [
+    uniqueIndex('accounts_provider_subject').on(t.provider, t.providerAccountId),
+    index('accounts_user').on(t.userId),
+    check('accounts_version_positive', sql`${t.version} > 0`),
+  ],
+);
+export const sessions = pgTable(
+  'sessions',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    expires: timestamp('expires', { withTimezone: true }).notNull(),
+    lastSeen: timestamp('last_seen', { withTimezone: true }).defaultNow().notNull(),
+    device: text('device').notNull().default('Browser'),
+  },
+  (t) => [
+    index('sessions_user').on(t.userId),
+    index('sessions_expiry').on(t.expires),
+    check('sessions_version_positive', sql`${t.version} > 0`),
+  ],
+);
+export const settings = pgTable(
+  'settings',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    preferences: jsonb('preferences').$type<Preferences>().notNull(),
+    fieldClocks: jsonb('field_clocks').$type<FieldClocks>().notNull().default({}),
+  },
+  (t) => [
+    uniqueIndex('settings_user').on(t.userId),
+    check('settings_version_positive', sql`${t.version} > 0`),
+  ],
+);
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    action: text('action').notNull(),
+    entityType: text('entity_type').notNull(),
+    entityId: uuid('entity_id'),
+    details: jsonb('details').$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => [
+    index('audit_user_created').on(t.userId, t.createdAt),
+    check('audit_version_positive', sql`${t.version} > 0`),
+  ],
+);
+export const rateLimits = pgTable(
+  'rate_limits',
+  {
+    ...metadata(),
+    bucket: text('bucket').notNull().unique(),
+    windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+    hits: integer('hits').notNull(),
+  },
+  (t) => [
+    index('rate_window').on(t.windowStart),
+    check('rate_version_positive', sql`${t.version} > 0`),
+  ],
+);
+
+export const mutationReceipts = pgTable(
+  'mutation_receipts',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    mutationId: uuid('mutation_id').notNull(),
+    payloadHash: text('payload_hash').notNull(),
+    result: jsonb('result').notNull(),
+  },
+  (t) => [
+    uniqueIndex('receipts_user_mutation').on(t.userId, t.mutationId),
+    index('receipts_user_created').on(t.userId, t.createdAt),
+    check('receipts_version_positive', sql`${t.version}>0`),
+  ],
+);

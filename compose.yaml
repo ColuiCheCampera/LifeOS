@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: lifeos
+      POSTGRES_USER: lifeos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lifeos -d lifeos']
+      interval: 5s
+      timeout: 5s
+      retries: 15
+  migrate:
+    build:
+      context: .
+      target: deps
+    env_file: .env.local
+    environment:
+      DATABASE_URL: postgresql://lifeos:${POSTGRES_PASSWORD}@postgres:5432/lifeos
+    volumes:
+      - ./drizzle:/app/drizzle:ro
+      - ./scripts:/app/scripts:ro
+    command: ['npx', 'tsx', 'scripts/migrate.ts']
+    depends_on:
+      postgres:
+        condition: service_healthy
+  app:
+    build: .
+    env_file: .env.local
+    environment:
+      DATABASE_URL: postgresql://lifeos:${POSTGRES_PASSWORD}@postgres:5432/lifeos
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+volumes:
+  postgres-data:
