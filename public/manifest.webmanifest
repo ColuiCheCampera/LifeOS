@@ -46,6 +46,11 @@
   ],
   "shortcuts": [
     {
+      "name": "Nuova attività",
+      "short_name": "Attività",
+      "url": "/tasks?capture=1"
+    },
+    {
       "name": "Apri Oggi",
       "short_name": "Oggi",
       "url": "/today"

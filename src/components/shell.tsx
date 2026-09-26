@@ -10,6 +10,10 @@ import {
   ShieldCheck,
   ArrowUpRight,
 } from 'lucide-react';
+import { WorkOverlays } from '@/features/work/ui';
+import { useLocale } from 'next-intl';
+import { copy } from '@/features/work/copy';
+import { CheckSquare, Folder, ClipboardCheck } from 'lucide-react';
 import { useState } from 'react';
 import { purgeLocal, localSnapshot } from '@/features/sync/client';
 import { signOut } from 'next-auth/react';
@@ -25,9 +29,13 @@ export function Shell({
 }) {
   const t = useTranslations();
   const path = usePathname();
+  const c = copy[useLocale() === 'en' ? 'en' : 'it'];
   const [collapsed, setCollapsed] = useState(false);
   const links = [
     { href: '/today', label: t('today'), icon: Sun },
+    { href: '/tasks', label: c.tasks, icon: CheckSquare },
+    { href: '/projects', label: c.projects, icon: Folder },
+    { href: '/review', label: c.review, icon: ClipboardCheck },
     { href: '/settings', label: t('settings'), icon: SlidersHorizontal },
   ];
   return (
@@ -99,7 +107,7 @@ export function Shell({
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-            <span>LifeOS · 0.2</span>
+            <span>LifeOS · 0.3</span>
           </Button>
         </div>
       </aside>
@@ -107,17 +115,18 @@ export function Shell({
         <header className="topbar">
           <span>
             LifeOS <span className="breadcrumb">/</span>{' '}
-            <strong>{path === '/settings' ? t('settings') : t('today')}</strong>
+            <strong>{links.find((l) => l.href === path)?.label ?? t('today')}</strong>
           </span>
           <span className="status-pill">
             <span />
             {t('protected')}
           </span>
         </header>
+        <WorkOverlays />
         <main id="main-content">{children}</main>
         <footer className="page-footer">
           <span>{t('brandTag')}</span>
-          <span>LifeOS / M2</span>
+          <span>LifeOS / M3</span>
         </footer>
       </div>
       <nav className="mobile-tabs" aria-label={t('mobileNavigation')}>

@@ -9,11 +9,11 @@ test('every private route denies unauthenticated access and security headers are
   page,
   request,
 }) => {
-  for (const route of ['/', '/today', '/settings']) {
+  for (const route of ['/', '/today', '/settings', '/tasks', '/projects', '/review']) {
     await page.goto(route);
     await expect(page).toHaveURL(/\/login/);
   }
-  for (const route of ['/api/settings', '/api/sessions', '/api/health', '/api/sync']) {
+  for (const route of ['/api/settings', '/api/sessions', '/api/health', '/api/sync', '/api/work']) {
     const response = await request.get(route);
     expect(response.status()).toBe(401);
     expect(response.headers()['cache-control']).toContain('no-store');
@@ -48,7 +48,7 @@ test('allowed signed OIDC login, settings persistence, conflict and CSRF protect
 }) => {
   await login(page);
   await expect(page).toHaveURL(/\/today/);
-  await expect(page.getByRole('heading', { name: 'Il tuo spazio, con calma.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Oggi', exact: true })).toBeVisible();
   const cookie = (await page.context().cookies()).find((c) => c.name === 'authjs.session-token');
   expect(cookie?.httpOnly).toBe(true);
   expect(cookie?.sameSite).toBe('Lax');

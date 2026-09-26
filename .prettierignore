@@ -7,7 +7,7 @@ test-results
 docs/PRODUCT_SPEC.md
 drizzle/meta
 next-env.d.ts
-work
+/work
 
 public/sw.js
 public/offline.html

@@ -10,6 +10,7 @@ import {
 import { useTranslations } from 'next-intl';
 import {
   enqueuePreferences,
+  localWork,
   flush,
   localSnapshot,
   startSync,
@@ -41,8 +42,8 @@ function SyncBridge() {
   const query = useQueryClient();
   useEffect(() => {
     const update = () => {
-      if (syncInfo().status === 'locked') query.removeQueries({ queryKey });
-      else void query.invalidateQueries({ queryKey });
+      if (syncInfo().status === 'locked') query.clear();
+      else void query.invalidateQueries();
     };
     syncEvents.addEventListener('change', update);
     const stop = startSync();
@@ -159,4 +160,8 @@ export function SessionBoundary({ children }: { children: React.ReactNode }) {
       </main>
     );
   return children;
+}
+
+export function useWork() {
+  return useQuery({ queryKey: ['encrypted-work'], queryFn: localWork, refetchInterval: 1000 });
 }

@@ -17,6 +17,8 @@ export default defineConfig({
         'src/features/sync/reconcile.ts',
         'src/features/sync/vault.ts',
         'src/features/pwa/install-policy.ts',
+        'src/features/work/schema.ts',
+        'src/features/work/domain.ts',
       ],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },

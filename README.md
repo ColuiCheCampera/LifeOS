@@ -1,6 +1,6 @@
 # LifeOS
 
-Personal life operating system. **Step 0 + M1–M2 foundation**: Google-only identity, strict account allowlist, database sessions, private app shell, editable settings, design system and CI. M2 adds an installable PWA, encrypted offline preferences and durable reconciliation. M3–M8 are not implemented in this delivery. No fake task/calendar/finance screens.
+Personal life operating system. **Step 0 + M1–M3**: Google-only identity, strict account allowlist, database sessions, private app shell, editable settings, design system and CI. M2 adds an installable PWA, encrypted offline preferences and durable reconciliation. M3 implements tasks and projects. M4–M8 remain pending; no fake calendar/finance screens.
 
 ## Local setup
 
@@ -9,7 +9,7 @@ Personal life operating system. **Step 0 + M1–M2 foundation**: Google-only ide
 3. `npm run db:migrate`, then `npm run dev`. Open http://localhost:3000.
 4. `npm run typecheck`, `npm run lint`, `npm test`, `npx playwright install chromium`, `npm run test:e2e`, `npm run build` (production build requires HTTPS AUTH_URL).
 
-E2E starts isolated ephemeral PostgreSQL on 55439, an OIDC issuer on 4011, and Next dev on 3000. Those ports must be free. The signed test issuer exists only in tests; the application has no test-auth bypass. Run as a regular user, not root. Test fixtures are fake data; production starts empty. `DEMO_MODE=true npm run db:seed` seeds a disconnected fake persona, not an authenticated demo account.
+E2E starts isolated ephemeral PostgreSQL on 55439, an OIDC issuer on 4011, and Next dev on 3100. Those ports must be free. The signed test issuer exists only in tests; the application has no test-auth bypass. Run as a regular user, not root. Test fixtures are fake data; production starts empty. `DEMO_MODE=true npm run db:seed` seeds a disconnected fake persona, not an authenticated demo account.
 
 ## Docker
 
@@ -29,3 +29,9 @@ See docs/ARCHITECTURE.md, SCHEMA.md, DECISIONS.md, PRODUCT_SPEC.md, and VERIFICA
 Use HTTPS (localhost also works). The build generates the Serwist worker and public offline shell. Visit Settings online once, then open the offline workspace or reload the same tab without a connection. Saved preference edits remain encrypted and queue for reconnect; security settings require online access. A new offline tab cannot unlock private data. Offline authorization expires with the server-issued lease. See [offline design and limitations](docs/OFFLINE.md).
 
 Install from the explicit browser prompt; iOS uses Share → Add to Home Screen. Updates require approval and block while edits or queued changes remain. Clear cache removes local keys and pending edits and signs out when online. Background Sync is optional; focus, reconnect and Sync now provide fallbacks.
+
+## Tasks and projects (M3)
+
+Tasks, projects, editable areas and milestones now have real local-first CRUD, quick capture, saved filters, recurrence, a weekly review and keyboard/touch controls. Start with `/tasks` or `/projects`; see [usage and boundaries](docs/TASKS_PROJECTS.md).
+
+On the configured personal computer use `./Avvia-LifeOS.sh` (or `npm run local`). It starts the persistent local database, applies migrations and serves the app on loopback port 3000. It uses the private `.env.local`; never copy credentials into documentation or Git. Browser tests run on port 3100 and a separate disposable database.

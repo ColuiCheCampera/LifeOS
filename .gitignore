@@ -6,7 +6,7 @@ coverage/
 playwright-report/
 test-results/
 *.tsbuildinfo
-work/
+/work/
 
 public/sw.js
 public/offline.html

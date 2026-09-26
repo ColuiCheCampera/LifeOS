@@ -1,3 +1,17 @@
+# M3 verification — 26 September 2026
+
+Tasks, projects, areas, milestones, saved filters, quick capture, command palette, review, deadline views and encrypted offline mutations are implemented. See TASKS_PROJECTS.md for supported behavior and boundaries. Calendar integration remains M4; gesture and shortcut remapping remains future settings work.
+
+Validation: 91 unit tests passed; selected coverage is 97.44% statements, 93.88% branches, 97.33% functions and 98.82% lines. Chromium scenarios cover task CRUD and views, projects and progress, offline reload/replay, tenant isolation, field reconciliation, recurring completion, mobile gestures and accessibility. All 17 scenarios passed on 26 September; desktop projects and mobile navigation screenshots were visually inspected. TypeScript, ESLint, Prettier and the production Next.js/PWA build passed. M3 screenshots use an isolated test persona.
+
+The desktop database migration was applied successfully after a cold backup at `.local/backups/postgres-before-m3.tar.gz` (excluded from Git). Drizzle regeneration reports no schema drift. Scope audit passed and npm audit reported zero vulnerabilities. Production client JavaScript is approximately 1,012 KiB gzip against the 1,200 KiB budget.
+
+Deleted records reject queued field edits as acknowledged conflicts, preventing an obsolete edit from blocking later synchronization. Receipts store changed records rather than duplicating the entire snapshot.
+
+Browser tests use a signed mock OIDC provider and disposable PostgreSQL on separate ports. They do not verify live Google UI, physical-device installation, OS background scheduling, Docker or remote CI. Existing credentials and personal data are excluded from Git.
+
+---
+
 # M2 verification — 25 September 2026
 
 ## Completed scope

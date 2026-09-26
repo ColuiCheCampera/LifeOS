@@ -12,6 +12,7 @@ import {
 import { sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import type { FieldClocks } from '@/features/sync/schema';
+import type { WorkRecord } from '@/features/work/schema';
 import type { Preferences } from '@/features/settings/schema';
 const metadata = () => ({
   id: uuid('id').primaryKey().$defaultFn(uuidv7),
@@ -79,6 +80,7 @@ export const settings = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     preferences: jsonb('preferences').$type<Preferences>().notNull(),
     fieldClocks: jsonb('field_clocks').$type<FieldClocks>().notNull().default({}),
+    workRevision: integer('work_revision').notNull().default(0),
   },
   (t) => [
     uniqueIndex('settings_user').on(t.userId),
@@ -133,3 +135,28 @@ export const mutationReceipts = pgTable(
     check('receipts_version_positive', sql`${t.version}>0`),
   ],
 );
+
+// Separate domain tables retain typed payloads and per-field clocks for offline reconciliation.
+function workTable(name: string) {
+  return pgTable(
+    name,
+    {
+      ...metadata(),
+      userId: uuid('user_id')
+        .notNull()
+        .references(() => users.id, { onDelete: 'cascade' }),
+      data: jsonb('data').$type<WorkRecord['data']>().notNull(),
+      fieldClocks: jsonb('field_clocks').$type<WorkRecord['clocks']>().notNull().default({}),
+    },
+    (t) => [
+      index(name + '_user_updated').on(t.userId, t.updatedAt),
+      index(name + '_user_deleted').on(t.userId, t.deletedAt),
+      check(name + '_version_positive', sql`${t.version}>0`),
+    ],
+  );
+}
+export const tasks = workTable('tasks');
+export const projects = workTable('projects');
+export const areas = workTable('areas');
+export const milestones = workTable('milestones');
+export const savedFilters = workTable('saved_filters');

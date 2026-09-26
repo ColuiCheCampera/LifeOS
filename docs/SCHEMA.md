@@ -53,3 +53,9 @@ All application tables have `id uuid` (UUIDv7 generated server-side), `user_id u
 
 Full text: generated `search_vector tsvector` + GIN on tasks, projects, events, notes, commitments and bookings; Italian/simple dictionary chosen per locale. Local index uses the same normalized fields in M2/M3. Every feature migration includes common tenant/time indexes plus relevant indexes above. Unbounded task trees use recursive CTEs and cycle validation. Cross-entity links validate ownership and entity existence in a transaction.
 Amounts never use JS floats for arithmetic; exchange rates use fixed decimal strings. Date-only all-day events are distinct from timestamps. Offline reconciliation compares each field clock, tie-breaking by client id; version increments atomically, delete tombstones persist for 30 days. Idempotency receipts prevent duplicate mutation replay.
+
+## M3 implementation
+
+`tasks`, `projects`, `areas`, `milestones`, `saved_filters` each have UUIDv7 id, user FK, common timestamps/soft deletion/version, a strictly validated JSON `data` payload and `field_clocks`. Common tenant/updated and tenant/deleted indexes exist on all five. Tasks additionally have expression indexes for due date, project, parent and status, plus a GIN full-text expression over title/notes; projects have a status expression index. These expression indexes are explicitly authored in migration 0002.
+
+`settings.work_revision` is the monotonic revision of that user's productivity snapshot. The row lock serializes graph validation and entity mutations. Foreign reference types and tenant ownership are checked against the same transactional snapshot, not accepted from the request. Deep task ancestors are walked iteratively with cycle detection. Tags are normalized task arrays at this milestone; a shared tag catalog may be introduced when other modules consume tags.

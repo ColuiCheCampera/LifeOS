@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { workSnapshotSchema, workMutationSchema } from '@/features/work/schema';
 import { preferencesSchema } from '@/features/settings/schema';
 export const offlineFields = [
   'locale',
@@ -54,7 +55,12 @@ export const snapshotSchema = z
   .strict();
 export type SettingsSnapshot = z.infer<typeof snapshotSchema>;
 export const bootstrapSchema = z
-  .object({ userId: z.uuid(), expiresAt: z.number().int().positive(), snapshot: snapshotSchema })
+  .object({
+    userId: z.uuid(),
+    expiresAt: z.number().int().positive(),
+    snapshot: snapshotSchema,
+    work: workSnapshotSchema.optional(),
+  })
   .strict();
 export const acknowledgementSchema = z
   .object({
@@ -67,6 +73,8 @@ export const localStateSchema = z
   .object({
     snapshot: snapshotSchema,
     queue: z.array(mutationSchema).max(1000),
+    work: workSnapshotSchema.optional(),
+    workQueue: z.array(workMutationSchema).max(1000).optional(),
     clientId: z.uuid(),
     lastClock: z.number().int().nonnegative(),
   })

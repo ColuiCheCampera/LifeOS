@@ -1,3 +1,4 @@
+import { getWork } from '@/features/work/service';
 import { apiGuard, json, safeRoute, readJson } from '@/server/api';
 import { getSnapshot, applyMutation } from '@/features/sync/service';
 import { mutationSchema } from '@/features/sync/schema';
@@ -10,6 +11,9 @@ export const GET = (request: Request) =>
       userId: guard.userId,
       expiresAt: Math.min(guard.expiresAt, Date.now() + snapshot.preferences.idleMinutes * 60000),
       snapshot,
+      ...(new URL(request.url).searchParams.get('work') === '1'
+        ? { work: await getWork(guard.userId) }
+        : {}),
     });
   });
 export const POST = (request: Request) =>

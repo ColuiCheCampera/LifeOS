@@ -1,6 +1,6 @@
 export const testEnv = {
   DATABASE_URL: 'postgresql://lifeos:lifeos@localhost:55439/lifeos_test',
-  AUTH_URL: 'http://localhost:3000',
+  AUTH_URL: 'http://localhost:3100',
   AUTH_SECRET: 'test-only-secret-not-for-real-deployments-12345',
   AUTH_GOOGLE_ID: 'lifeos-test-client',
   AUTH_GOOGLE_SECRET: 'test-client-secret',

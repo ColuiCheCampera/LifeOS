@@ -400,7 +400,7 @@ export function SettingsPanel({
               {key === 'about' && (
                 <div className="about-row">
                   <span>LifeOS</span>
-                  <span className="small-tag">0.2.0 · {t('foundation')}</span>
+                  <span className="small-tag">0.3.0 · {t('foundation')}</span>
                   <p>{t('privateDescription')}</p>
                 </div>
               )}

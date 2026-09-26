@@ -6,7 +6,7 @@ export default defineConfig({
   workers: 1,
   timeout: 60000,
   expect: { timeout: 10000 },
-  use: { baseURL: 'http://localhost:3000', trace: 'retain-on-failure' },
+  use: { baseURL: 'http://localhost:3100', trace: 'retain-on-failure' },
   reporter: [['list'], ['html', { open: 'never' }]],
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
@@ -18,8 +18,8 @@ export default defineConfig({
       env: testEnv,
     },
     {
-      command: 'npm run dev',
-      url: 'http://localhost:3000/login',
+      command: 'npm run pwa:build && next dev --port 3100',
+      url: 'http://localhost:3100/login',
       timeout: 120000,
       reuseExistingServer: false,
       env: { ...testEnv, NEXT_TELEMETRY_DISABLED: '1' },

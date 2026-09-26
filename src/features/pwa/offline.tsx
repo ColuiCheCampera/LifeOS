@@ -1,3 +1,4 @@
+import { WorkApp, WorkOverlays } from '@/features/work/ui';
 import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
 import { NextIntlClientProvider, useTranslations } from 'next-intl';
@@ -20,7 +21,16 @@ function OfflineRoot() {
   return (
     <NextIntlClientProvider locale={locale} messages={locale === 'en' ? en : it}>
       <SessionBoundary>
-        <OfflineContent />
+        {local.data && ['/tasks', '/projects', '/today', '/review'].includes(location.pathname) ? (
+          <>
+            <WorkApp
+              mode={location.pathname.slice(1) as 'tasks' | 'projects' | 'today' | 'review'}
+            />
+            <WorkOverlays />
+          </>
+        ) : (
+          <OfflineContent />
+        )}
       </SessionBoundary>
       <PwaControls />
     </NextIntlClientProvider>
