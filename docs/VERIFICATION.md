@@ -1,3 +1,13 @@
+# M3 bulk task actions — 28 September 2026
+
+Added select-all for filtered task lists/Kanban, bulk priority, move-to-Inbox and reopen controls. Bulk writes now await durable local persistence, prevent duplicate submissions and retain failures for retry; deletion requires confirmation with the selected count. Filtering clears stale selection. Individual writes remain independently durable, not an atomic batch.
+
+Validation: TypeScript, ESLint, Prettier, 94 unit tests, all 19 Chromium scenarios and the production PWA build passed. Selected coverage: 97.50% statements, 93.66% branches, 97.40% functions and 98.85% lines. The new unit tests cover sequential writes, partial/total failure and empty selection. The browser scenario covers filtered selection, project/Inbox moves, priority, complete/reopen, canceled and confirmed deletion, offline reload/replay and preservation of unselected tasks. Mobile axe reports zero violations; the mobile bulk-toolbar screenshot was visually inspected.
+
+Scope audit passed; production client JavaScript is 1,014 KiB gzip against the 1,200 KiB budget. One build attempt encountered a malformed generated `.next/dev/types/validator.ts`; removing only the generated development cache resolved it and the subsequent build passed. Tests used isolated OIDC/PostgreSQL services; no personal data or live Google credentials were used. M4 remains pending.
+
+---
+
 # M3 refinements — 28 September 2026
 
 User-requested focus: improve tasks, projects and UI before M4. Added combined project title/goal search, area/status filtering, result counts, reset and contextual empty states. Fixed task date edits retaining the old instant and Cancel bypassing the unsaved-change confirmation.

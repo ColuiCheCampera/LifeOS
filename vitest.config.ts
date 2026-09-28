@@ -19,6 +19,7 @@ export default defineConfig({
         'src/features/pwa/install-policy.ts',
         'src/features/work/schema.ts',
         'src/features/work/domain.ts',
+        'src/features/work/batch.ts',
       ],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },

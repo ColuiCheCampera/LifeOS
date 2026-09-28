@@ -31,6 +31,7 @@ import {
   taskEditorValues,
 } from './domain';
 import { copy, type Copy } from './copy';
+import { applyBatch } from './batch';
 const views = [
   'inbox',
   'today',
@@ -790,6 +791,8 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
   const [group, setGroup] = useState('');
   const [edit, setEdit] = useState<Edit | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkLock = useRef(false);
   const [notice, setNotice] = useState('');
   const [undo, setUndo] = useState<WorkRecord | null>(null);
   const [month, setMonth] = useState(() => todayIn(zone).slice(0, 7));
@@ -840,6 +843,47 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
         x.position - y.position || x.priority - y.priority || a.createdAt.localeCompare(b.createdAt)
       );
     });
+  const selectable =
+    view === 'trash' || view === 'calendar'
+      ? []
+      : [
+          ...filtered,
+          ...(view === 'board'
+            ? tasks.filter(
+                (r) => r.data.status === 'done' && matchesQuery(taskData(r), query, zone),
+              )
+            : []),
+        ];
+  const selectedRecords = selectable.filter((r) => selected.includes(r.id));
+  async function bulkChange(
+    patch: Record<string, unknown>,
+    operation: Parameters<typeof enqueueWork>[3] = 'upsert',
+  ) {
+    if (bulkLock.current || !selectedRecords.length) return;
+    if (
+      operation === 'delete' &&
+      !window.confirm(c.bulkDeleteConfirm.replace('{count}', String(selectedRecords.length)))
+    )
+      return;
+    bulkLock.current = true;
+    setBulkBusy(true);
+    setNotice(c.bulkSaving);
+    try {
+      const result = await applyBatch(selectedRecords, async (r) => {
+        if (operation === 'complete' && r.data.status === 'done') return;
+        await action('task', r.id, patch, operation);
+      });
+      setSelected((ids) => ids.filter((id) => !result.succeeded.includes(id)));
+      setNotice(
+        result.failed.length
+          ? c.bulkFailed.replace('{count}', String(result.failed.length))
+          : c.bulkSaved.replace('{count}', String(result.succeeded.length)),
+      );
+    } finally {
+      bulkLock.current = false;
+      setBulkBusy(false);
+    }
+  }
   async function change(
     r: WorkRecord,
     patch: Record<string, unknown>,
@@ -863,9 +907,10 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
       record={r}
       records={records}
       selected={selected.includes(r.id)}
-      onSelect={() =>
-        setSelected((s) => (s.includes(r.id) ? s.filter((id) => id !== r.id) : [...s, r.id]))
-      }
+      onSelect={() => {
+        if (!bulkLock.current)
+          setSelected((s) => (s.includes(r.id) ? s.filter((id) => id !== r.id) : [...s, r.id]));
+      }}
       onEdit={() => setEdit({ kind: 'task', record: r })}
       onChange={(p, op) => void change(r, p, op)}
       onDelete={() => void remove(r)}
@@ -1203,11 +1248,21 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
                 aria-label={c.search}
                 placeholder={c.search}
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setSelected([]);
+                }}
               />
             </label>
             {(view === 'project' || view === 'tag') && (
-              <select aria-label={c[view]} value={group} onChange={(e) => setGroup(e.target.value)}>
+              <select
+                aria-label={c[view]}
+                value={group}
+                onChange={(e) => {
+                  setGroup(e.target.value);
+                  setSelected([]);
+                }}
+              >
                 <option value="">{c.all}</option>
                 {(view === 'project'
                   ? projects.map((p) => ({ id: p.id, title: String(p.data.title) }))
@@ -1229,6 +1284,19 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
             >
               {c.newFilter}
             </Button>
+            {!!selectable.length && (
+              <Button
+                variant="outline"
+                disabled={bulkBusy}
+                onClick={() =>
+                  setSelected(
+                    selectedRecords.length === selectable.length ? [] : selectable.map((r) => r.id),
+                  )
+                }
+              >
+                {selectedRecords.length === selectable.length ? c.clear : c.selectAll}
+              </Button>
+            )}
           </div>
           {live.some((r) => r.kind === 'filter') && (
             <div className="saved-filters">
@@ -1240,6 +1308,7 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
                       onClick={() => {
                         setQuery(String(f.data.query));
                         setView('board');
+                        setSelected([]);
                       }}
                     >
                       {String(f.data.title)}
@@ -1254,59 +1323,70 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
                 ))}
             </div>
           )}
-          {!!selected.length && (
-            <div className="bulk-bar">
+          {!!selectedRecords.length && (
+            <fieldset
+              className="bulk-bar"
+              disabled={bulkBusy}
+              aria-label={c.bulkActions}
+              aria-busy={bulkBusy}
+            >
               <strong>
-                {selected.length} {c.selected}
+                {selectedRecords.length} {c.selected}
               </strong>
               <Button
-                onClick={() => {
-                  for (const id of selected) {
-                    const r = records.find((r) => r.id === id)!;
-                    void change(r, {}, 'complete');
-                  }
-                  setSelected([]);
-                }}
+                disabled={selectedRecords.every((r) => r.data.status === 'done')}
+                onClick={() => void bulkChange({}, 'complete')}
               >
                 {c.complete}
               </Button>
               <select
                 aria-label={c.move}
-                defaultValue=""
+                value=""
                 onChange={(e) => {
-                  for (const id of selected)
-                    void change(
-                      records.find((r) => r.id === id)!,
-                      { projectId: e.target.value || null },
-                    );
-                  setSelected([]);
+                  void bulkChange({
+                    projectId: e.target.value === 'inbox' ? null : e.target.value,
+                  });
                 }}
               >
-                <option value="">{c.move}</option>
+                <option value="" disabled>
+                  {c.move}
+                </option>
+                <option value="inbox">{c.inbox}</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {String(p.data.title)}
                   </option>
                 ))}
               </select>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  for (const id of selected)
-                    void change(
-                      records.find((r) => r.id === id)!,
-                      {},
-                      'delete',
-                    );
-                  setSelected([]);
-                }}
+              <select
+                aria-label={c.priority}
+                value=""
+                onChange={(e) => void bulkChange({ priority: Number(e.target.value) })}
               >
+                <option value="" disabled>
+                  {c.priority}
+                </option>
+                {[1, 2, 3, 4].map((priority) => (
+                  <option key={priority} value={priority}>
+                    P{priority}
+                  </option>
+                ))}
+              </select>
+              {selectedRecords.some((r) => r.data.status === 'done') && (
+                <Button
+                  variant="outline"
+                  onClick={() => void bulkChange({ status: 'todo', completedAt: null })}
+                >
+                  {c.reopen}
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => void bulkChange({}, 'delete')}>
                 {c.remove}
               </Button>
               <Button variant="ghost" onClick={() => setSelected([])}>
                 {c.clear}
               </Button>
-            </div>
+            </fieldset>
           )}
           {view === 'board' ? (
             <div className="kanban">

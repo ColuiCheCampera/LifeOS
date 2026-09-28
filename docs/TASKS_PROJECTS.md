@@ -24,6 +24,8 @@ Saved filters combine terms with `&`: `p1`, `#work`, `due:today`, `due:overdue`,
 
 ## Interaction
 
+In task lists and Kanban, **Select all filtered tasks** selects the matching tasks, including rows outside the current scroll window. The bulk toolbar completes or reopens tasks, changes priority, moves them into a project or back to Inbox, and deletes them after confirmation. Changing the search, group, saved filter or view clears the selection. Writes are queued sequentially; successful items are deselected only after saving on the device, while failures remain selected for retry. A saved-on-device message does not imply that server synchronization has finished. These controls also work offline; completed recurring tasks are not completed again by a mixed Kanban selection.
+
 Task rows offer completion, edit, delete, selection and up/down controls. Touch swipe right completes, swipe left edits, and a long press selects. Native desktop dragging moves tasks to board columns, project cards and calendar dates; the editor exposes the equivalent fields. Mobile dialogs act as bottom sheets: use the handle to change height, drag the heading up/down to resize, or drag down farther to close. Pull down from the top of the page to refresh, or use the visible refresh/sync controls.
 
 Long lists are windowed. All saved tasks and projects use the same encrypted local vault as preferences. A new record enters the durable queue before success is shown. Reconnect replays mutations with field clocks and transactionally deduplicated IDs. Cache clearing discards unsynced data only after confirmation. Keep the browser profile and local database backed up.
