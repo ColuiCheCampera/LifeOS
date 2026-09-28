@@ -12,6 +12,7 @@ import {
   optimisticWork,
   matchesQuery,
   taskDepth,
+  taskEditorValues,
 } from '@/features/work/domain';
 import {
   taskSchema,
@@ -37,6 +38,18 @@ function mutation(patch: Record<string, unknown>, rest: Partial<WorkMutation> = 
 const create = (patch: Record<string, unknown> = { title: 'Task' }) =>
   applyWork(emptyWork(), mutation(patch)).snapshot;
 describe('capture and calendar math', () => {
+  it('edits a deadline in local time and preserves the clock across a DST date change', () => {
+    const values = taskEditorValues(
+      { dueAt: '2026-03-28T16:00:00Z', timezone: 'Europe/Rome' },
+      'UTC',
+    );
+    expect(values.dueAt).toBe('17:00:00');
+    expect(dateAt('2026-03-29', values.dueAt!, String(values.timezone))).toBe(
+      '2026-03-29T15:00:00Z',
+    );
+    expect(taskEditorValues({}, 'Europe/Rome')).toEqual({ timezone: 'Europe/Rome', dueAt: null });
+    expect(() => dateAt('2026-03-29', '02:30:00', 'Europe/Rome')).toThrow();
+  });
   it('parses Italian date, clock, priority and unicode tag', () =>
     expect(
       parseCapture('Pagare bolletta domani alle 17 #casa p1', 'Europe/Rome', now),

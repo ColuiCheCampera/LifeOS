@@ -18,6 +18,8 @@ Inbox contains active tasks without a project. Today includes due and overdue ta
 
 Create your own life areas, projects and milestones. Project progress counts completed, non-deleted tasks. Weekly review lists projects without changes for seven days, overdue tasks and unorganized Inbox items. There are no seeded personal records.
 
+Projects can be searched by title or goal and filtered by area and status together, including offline. A result count and a reset action distinguish an empty search from an empty project collection. Closing an edited task or project, including with Cancel, asks before discarding unsaved changes. Changing a task's date preserves its local clock time across daylight-saving changes; invalid or ambiguous times must be corrected before saving.
+
 Saved filters combine terms with `&`: `p1`, `#work`, `due:today`, `due:overdue`, `due:this week`, `status:todo`, `status:doing`, `status:done`, and plain text. The current view also constrains results. Ctrl/Cmd+K opens fuzzy title search and navigation; `?` shows shortcuts.
 
 ## Interaction

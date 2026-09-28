@@ -21,7 +21,15 @@ import { Button } from '@/components/ui/button';
 import { SyncPanel, useWork, useLocalSettings } from '@/features/sync/provider';
 import { enqueueWork, flush } from '@/features/sync/client';
 import { schemas, taskData, projectData, type Kind, type WorkRecord } from './schema';
-import { fuzzyScore, parseCapture, matchesQuery, todayIn, dateAt, taskDepth } from './domain';
+import {
+  fuzzyScore,
+  parseCapture,
+  matchesQuery,
+  todayIn,
+  dateAt,
+  taskDepth,
+  taskEditorValues,
+} from './domain';
 import { copy, type Copy } from './copy';
 const views = [
   'inbox',
@@ -128,7 +136,8 @@ function Editor({
   const preferences = useLocalSettings().data?.snapshot.preferences;
   const zone = preferences?.timezone ?? 'Europe/Rome';
   const action = useActions();
-  const initial = edit.record?.data ?? edit.initial ?? {};
+  const source = edit.record?.data ?? edit.initial ?? {};
+  const initial = edit.kind === 'task' ? taskEditorValues(source, zone) : source;
   const [form, setForm] = useState<Record<string, unknown>>(() => ({ ...initial }));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -136,6 +145,7 @@ function Editor({
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
   const dirty = JSON.stringify(form) !== JSON.stringify(initial);
   const dismiss = () => {
+    if (busy) return;
     if (!dirty || window.confirm(c.saveFirst)) close();
   };
   const select = (key: string, options: { id: string; title: string }[], nullable = true) => (
@@ -186,7 +196,7 @@ function Editor({
       const data = { ...form };
       if (edit.kind === 'task') {
         data.timezone ??= zone;
-        if (data.dueAt && data.dueDate && String(data.dueAt).length <= 5)
+        if (data.dueAt && data.dueDate)
           data.dueAt = dateAt(String(data.dueDate), String(data.dueAt), String(data.timezone));
         if (!data.dueDate) data.dueAt = null;
       }
@@ -247,16 +257,8 @@ function Editor({
                 {c.dueAt}
                 <input
                   type="time"
-                  value={
-                    form.dueAt
-                      ? String(form.dueAt).length > 5
-                        ? Temporal.Instant.from(String(form.dueAt))
-                            .toZonedDateTimeISO(String(form.timezone ?? zone))
-                            .toPlainTime()
-                            .toString({ smallestUnit: 'minute' })
-                        : String(form.dueAt)
-                      : ''
-                  }
+                  step="1"
+                  value={value('dueAt')}
                   onChange={(e) => set('dueAt', e.target.value || null)}
                 />
               </label>
@@ -382,7 +384,7 @@ function Editor({
               {c.remove}
             </Button>
           )}
-          <Button type="button" variant="outline" onClick={close}>
+          <Button type="button" variant="outline" disabled={busy} onClick={dismiss}>
             {c.cancel}
           </Button>
           <Button disabled={busy}>{c.save}</Button>
@@ -792,6 +794,8 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
   const [undo, setUndo] = useState<WorkRecord | null>(null);
   const [month, setMonth] = useState(() => todayIn(zone).slice(0, 7));
   const [area, setArea] = useState('');
+  const [projectStatus, setProjectStatus] = useState('');
+  const [projectSearch, setProjectSearch] = useState('');
   const pullStart = useRef<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -800,6 +804,14 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
   }, []);
   const live = records.filter((r) => !r.deletedAt);
   const projects = live.filter((r) => r.kind === 'project');
+  const visibleProjects = projects.filter(
+    (p) =>
+      (!area || p.data.areaId === area) &&
+      (!projectStatus || p.data.status === projectStatus) &&
+      `${p.data.title} ${p.data.goal}`
+        .toLocaleLowerCase(locale)
+        .includes(projectSearch.trim().toLocaleLowerCase(locale)),
+  );
   const tasks = live.filter((r) => r.kind === 'task');
   const today = todayIn(zone);
   const filtered = records
@@ -974,8 +986,38 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
       </div>
       {mode === 'projects' ? (
         <>
+          <div className="work-toolbar">
+            <label className="work-search">
+              <Search size={18} />
+              <input
+                aria-label={c.searchProjects}
+                placeholder={c.searchProjects}
+                value={projectSearch}
+                onChange={(e) => setProjectSearch(e.target.value)}
+              />
+            </label>
+            <select
+              aria-label={c.status}
+              value={projectStatus}
+              onChange={(e) => setProjectStatus(e.target.value)}
+            >
+              <option value="">{c.allStatuses}</option>
+              {(['active', 'paused', 'done'] as const).map((status) => (
+                <option key={status} value={status}>
+                  {c[status]}
+                </option>
+              ))}
+            </select>
+            <span role="status">
+              {visibleProjects.length} / {projects.length} {c.projects.toLocaleLowerCase(locale)}
+            </span>
+          </div>
           <div className="work-tabs">
-            <button className={!area ? 'active' : ''} onClick={() => setArea('')}>
+            <button
+              aria-pressed={!area}
+              className={!area ? 'active' : ''}
+              onClick={() => setArea('')}
+            >
               {c.all}
             </button>
             {live
@@ -984,6 +1026,7 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
                 <span key={r.id} className="area-tab">
                   <button
                     onClick={() => setArea(r.id)}
+                    aria-pressed={area === r.id}
                     className={area === r.id ? 'active' : ''}
                     style={{ borderColor: String(r.data.color) }}
                   >
@@ -999,91 +1042,112 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
               ))}
           </div>
           <div className="project-grid">
-            {projects
-              .filter((p) => !area || p.data.areaId === area)
-              .map((p) => {
-                const data = projectData(p);
-                const linked = tasks.filter((t) => t.data.projectId === p.id);
-                const done = linked.filter((t) => t.data.status === 'done').length;
-                return (
-                  <section
-                    className="card project-card"
-                    key={p.id}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => drop(e, { projectId: p.id })}
-                  >
-                    <div className="project-top">
-                      <Folder size={22} />
-                      <span className="small-tag">{c[data.status]}</span>
+            {visibleProjects.map((p) => {
+              const data = projectData(p);
+              const linked = tasks.filter((t) => t.data.projectId === p.id);
+              const done = linked.filter((t) => t.data.status === 'done').length;
+              return (
+                <section
+                  className="card project-card"
+                  key={p.id}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => drop(e, { projectId: p.id })}
+                >
+                  <div className="project-top">
+                    <Folder size={22} />
+                    <span className="small-tag">{c[data.status]}</span>
+                  </div>
+                  <h2>{data.title}</h2>
+                  <p>{data.goal}</p>
+                  <progress value={done} max={linked.length || 1} aria-label={c.progress} />
+                  <small>
+                    {done}/{linked.length} · {data.deadline ?? c.noDue}
+                  </small>
+                  {data.notes && (
+                    <div className="markdown">
+                      <Markdown>{data.notes}</Markdown>
                     </div>
-                    <h2>{data.title}</h2>
-                    <p>{data.goal}</p>
-                    <progress value={done} max={linked.length || 1} aria-label={c.progress} />
-                    <small>
-                      {done}/{linked.length} · {data.deadline ?? c.noDue}
-                    </small>
-                    {data.notes && (
-                      <div className="markdown">
-                        <Markdown>{data.notes}</Markdown>
-                      </div>
-                    )}
-                    <div className="project-actions">
-                      <Button
-                        variant="outline"
-                        onClick={() => setEdit({ kind: 'project', record: p })}
-                      >
-                        {c.edit}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => setEdit({ kind: 'task', initial: { projectId: p.id } })}
-                      >
-                        {c.newTask}
-                      </Button>
-                      <Button variant="ghost" onClick={() => void remove(p)}>
-                        {c.remove}
-                      </Button>
-                    </div>
-                    <h3>{c.milestones}</h3>
-                    {live
-                      .filter((m) => m.kind === 'milestone' && m.data.projectId === p.id)
-                      .map((m) => (
-                        <div className="milestone-row" key={m.id}>
-                          <input
-                            type="checkbox"
-                            aria-label={String(m.data.title)}
-                            checked={!!m.data.done}
-                            onChange={() => void change(m, { done: !m.data.done })}
-                          />
-                          <button onClick={() => setEdit({ kind: 'milestone', record: m })}>
-                            {String(m.data.title)} <small>{String(m.data.dueDate ?? '')}</small>
-                          </button>
-                          <button
-                            className="icon-button"
-                            aria-label={c.remove}
-                            onClick={() => void remove(m)}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                  )}
+                  <div className="project-actions">
+                    <Button
+                      variant="outline"
+                      onClick={() => setEdit({ kind: 'project', record: p })}
+                    >
+                      {c.edit}
+                    </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => setEdit({ kind: 'milestone', initial: { projectId: p.id } })}
+                      onClick={() => setEdit({ kind: 'task', initial: { projectId: p.id } })}
                     >
-                      {c.newMilestone}
+                      {c.newTask}
                     </Button>
-                    <details>
-                      <summary>
-                        {c.tasks} ({linked.length})
-                      </summary>
-                      {linked.map(row)}
-                    </details>
-                  </section>
-                );
-              })}
+                    <Button variant="ghost" onClick={() => void remove(p)}>
+                      {c.remove}
+                    </Button>
+                  </div>
+                  <h3>{c.milestones}</h3>
+                  {live
+                    .filter((m) => m.kind === 'milestone' && m.data.projectId === p.id)
+                    .map((m) => (
+                      <div className="milestone-row" key={m.id}>
+                        <input
+                          type="checkbox"
+                          aria-label={String(m.data.title)}
+                          checked={!!m.data.done}
+                          onChange={() => void change(m, { done: !m.data.done })}
+                        />
+                        <button onClick={() => setEdit({ kind: 'milestone', record: m })}>
+                          {String(m.data.title)} <small>{String(m.data.dueDate ?? '')}</small>
+                        </button>
+                        <button
+                          className="icon-button"
+                          aria-label={c.remove}
+                          onClick={() => void remove(m)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  <Button
+                    variant="ghost"
+                    onClick={() => setEdit({ kind: 'milestone', initial: { projectId: p.id } })}
+                  >
+                    {c.newMilestone}
+                  </Button>
+                  <details>
+                    <summary>
+                      {c.tasks} ({linked.length})
+                    </summary>
+                    {linked.map(row)}
+                  </details>
+                </section>
+              );
+            })}
           </div>
-          {!projects.length && <Empty c={c} onAdd={() => setEdit({ kind: 'project' })} />}
+          {!projects.length && (
+            <Empty
+              c={c}
+              kind="project"
+              onAdd={() => setEdit({ kind: 'project', initial: { areaId: area || null } })}
+            />
+          )}
+          {!!projects.length && !visibleProjects.length && (
+            <section className="work-empty">
+              <Search size={34} />
+              <h2>{c.noResults}</h2>
+              <p>{c.noResultsHint}</p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setArea('');
+                  setProjectStatus('');
+                  setProjectSearch('');
+                }}
+              >
+                {c.resetFilters}
+              </Button>
+            </section>
+          )}
         </>
       ) : mode === 'review' ? (
         <div className="review-grid">
@@ -1365,15 +1429,23 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
     </div>
   );
 }
-function Empty({ c, onAdd }: { c: Copy; onAdd: () => void }) {
+function Empty({
+  c,
+  onAdd,
+  kind = 'task',
+}: {
+  c: Copy;
+  onAdd: () => void;
+  kind?: 'task' | 'project';
+}) {
   return (
     <section className="work-empty">
       <Inbox size={34} />
       <h2>{c.empty}</h2>
-      <p>{c.emptyHint}</p>
+      <p>{kind === 'project' ? c.emptyProjectHint : c.emptyHint}</p>
       <Button variant="outline" onClick={onAdd}>
         <Plus size={18} />
-        {c.title}
+        {kind === 'project' ? c.createProject : c.createTask}
       </Button>
     </section>
   );

@@ -21,6 +21,18 @@ export function dateAt(date: string, time: string, zone: string) {
     .toInstant()
     .toString();
 }
+export function taskEditorValues(data: Record<string, unknown>, zone: string) {
+  return {
+    ...data,
+    timezone: data.timezone ?? zone,
+    dueAt: data.dueAt
+      ? Temporal.Instant.from(String(data.dueAt))
+          .toZonedDateTimeISO(String(data.timezone ?? zone))
+          .toPlainTime()
+          .toString({ smallestUnit: 'second' })
+      : null,
+  };
+}
 export function validateRule(rule: string) {
   if (!rule) return;
   if (!/^FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)(;[A-Z]+=[A-Z0-9,+-]+)*$/.test(rule))

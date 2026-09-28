@@ -17,6 +17,8 @@ async function main() {
     password: 'lifeos',
     port: 55439,
     persistent: false,
+    // Windows force-stops test process trees; avoid orphaned PostgreSQL 18 I/O workers.
+    postgresFlags: process.platform === 'win32' ? ['-c', 'io_method=sync'] : [],
     onLog: () => {},
     onError: () => {},
   });

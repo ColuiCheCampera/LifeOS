@@ -1,0 +1,58 @@
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { login } from './helpers';
+
+test('project filters and task editor preserve deliberate changes', async ({ page }) => {
+  await login(page);
+  await page.goto('/projects');
+  await expect(page.locator('[data-sync-status]')).toHaveAttribute('data-sync-status', 'synced');
+  await page.getByRole('button', { name: 'Nuovo progetto', exact: true }).first().click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Titolo', { exact: true }).fill('Progetto filtri');
+  await dialog.getByLabel('Obiettivo').fill('Obiettivo ricercabile');
+  await dialog.getByLabel('Stato', { exact: true }).selectOption('paused');
+  await dialog.getByRole('button', { name: 'Salva', exact: true }).click();
+  const search = page.getByRole('textbox', { name: 'Cerca progetti per titolo o obiettivo' });
+  await search.fill('ricercabile');
+  await expect(page.locator('.project-card')).toHaveCount(1);
+  await page.getByLabel('Stato', { exact: true }).selectOption('active');
+  await expect(page.getByText('Nessun progetto corrisponde ai filtri.')).toBeVisible();
+  await page.getByRole('button', { name: 'Azzera filtri' }).click();
+  await search.fill('Progetto filtri');
+  const project = page.locator('.project-card');
+  await project.getByRole('button', { name: 'Nuova attività', exact: true }).click();
+  await dialog.getByLabel('Titolo', { exact: true }).fill('Orario stabile');
+  await dialog.getByLabel('Scadenza', { exact: true }).fill('2026-03-28');
+  await dialog.getByLabel('Ora (24 h)', { exact: true }).fill('17:00');
+  await dialog.getByRole('button', { name: 'Salva', exact: true }).click();
+  await project.locator('summary').click();
+  await project.locator('.task-main').click();
+  await dialog.getByLabel('Scadenza', { exact: true }).fill('2026-03-29');
+  page.once('dialog', (confirmation) => confirmation.dismiss());
+  await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel('Scadenza', { exact: true })).toHaveValue('2026-03-29');
+  await dialog.getByRole('button', { name: 'Salva', exact: true }).click();
+  await expect(page.locator('[data-sync-status]')).toHaveAttribute('data-sync-status', 'synced');
+  const snapshot = await (await page.request.get('/api/work')).json();
+  const task = snapshot.records.find(
+    (r: { data: { title: string } }) => r.data.title === 'Orario stabile',
+  );
+  expect(task.data.dueAt).toBe('2026-03-29T15:00:00Z');
+  await project.locator('.task-main').click();
+  await dialog.getByLabel('Titolo', { exact: true }).fill('Da scartare');
+  page.once('dialog', (confirmation) => confirmation.accept());
+  await dialog.getByRole('button', { name: 'Annulla', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(project.getByText('Orario stabile', { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.context().setOffline(true);
+  await search.fill('nessuna corrispondenza');
+  await expect(page.getByText('Nessun progetto corrisponde ai filtri.')).toBeVisible();
+  await page.getByRole('button', { name: 'Azzera filtri' }).click();
+  await search.fill('Progetto filtri');
+  await expect(project).toHaveCount(1);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: 'work/project-filters-mobile.png', fullPage: true });
+  await page.context().setOffline(false);
+});

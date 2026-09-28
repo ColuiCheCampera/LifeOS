@@ -1,3 +1,13 @@
+# M3 refinements — 28 September 2026
+
+User-requested focus: improve tasks, projects and UI before M4. Added combined project title/goal search, area/status filtering, result counts, reset and contextual empty states. Fixed task date edits retaining the old instant and Cancel bypassing the unsaved-change confirmation.
+
+Validated on Windows with Node 24: typecheck, ESLint, Prettier, 92 unit tests, all 18 Chromium scenarios and the production PWA build passed. Selected coverage: 97.44% statements, 93.66% branches, 97.36% functions and 98.82% lines. Scope audit passed; client JavaScript is 1,013 KiB gzip against the 1,200 KiB budget.
+
+The added browser scenario verifies project filtering/reset, keeping or discarding edits, preserving 17:00 Europe/Rome when rescheduling across the March DST boundary, mobile offline filtering and zero axe violations. Desktop and mobile project screenshots were visually inspected. `.gitattributes` prevents CRLF-only formatting failures; isolated Windows PostgreSQL tests use synchronous I/O to avoid orphan workers on forced shutdown. Port 55439 was confirmed released after the final suite. No personal database, live Google configuration or deployment was changed. M4 remains pending.
+
+---
+
 # M3 verification — 26 September 2026
 
 Tasks, projects, areas, milestones, saved filters, quick capture, command palette, review, deadline views and encrypted offline mutations are implemented. See TASKS_PROJECTS.md for supported behavior and boundaries. Calendar integration remains M4; gesture and shortcut remapping remains future settings work.
