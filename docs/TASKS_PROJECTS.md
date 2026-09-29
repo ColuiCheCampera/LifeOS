@@ -14,6 +14,8 @@ Quick capture includes a project selector (Inbox by default). **Save and add ano
 
 Edit a task to add Markdown notes, a parent task, project, estimate/actual minutes, recurrence, reminder dates and attachment metadata. Markdown never executes raw HTML. Attachment entries are links and metadata, not uploaded file content. Parent depth has no arbitrary limit; cyclic and foreign-account relationships are rejected.
 
+Use **More actions → Add subtask** on a task row to prefill its parent and current project. Each child can itself have children. Rows show the parent's name (including a Trash marker if deleted) and completed/total counts for non-deleted direct children. Completion remains independent: completing a child does not complete its parent or grandchildren. The parent selector excludes the edited task and all its descendants, including descendants reached through deleted nodes; the server still validates every relationship. All of this works from the encrypted offline snapshot.
+
 ## Views and organization
 
 Inbox contains active tasks without a project. Today includes due and overdue tasks; Upcoming shows future due dates. Project and tag selectors narrow active tasks. Kanban moves between To do, In progress and Completed. The deadline calendar changes task dates; it is separate from the Google event calendar planned for M4. Completed and Trash have explicit reopen/restore actions. Trash restore is limited to 30 days.
@@ -31,6 +33,8 @@ In task lists and Kanban, **Select all filtered tasks** selects the matching tas
 Task rows offer completion, edit, delete, selection and up/down controls. Touch swipe right completes, swipe left edits, and a long press selects. Native desktop dragging moves tasks to board columns, project cards and calendar dates; the editor exposes the equivalent fields. Mobile dialogs act as bottom sheets: use the handle to change height, drag the heading up/down to resize, or drag down farther to close. Pull down from the top of the page to refresh, or use the visible refresh/sync controls.
 
 Long lists are windowed. All saved tasks and projects use the same encrypted local vault as preferences. A new record enters the durable queue before success is shown. Reconnect replays mutations with field clocks and transactionally deduplicated IDs. Cache clearing discards unsynced data only after confirmation. Keep the browser profile and local database backed up.
+
+Windowed rows reserve space for hierarchy metadata. Changing the view, query or grouping resets the scroll window, so filtering a long list near its end does not leave the first matching tasks out of view.
 
 ## Recurrence and boundaries
 

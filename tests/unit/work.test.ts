@@ -12,6 +12,7 @@ import {
   optimisticWork,
   matchesQuery,
   taskDepth,
+  parentTaskOptions,
   taskEditorValues,
 } from '@/features/work/domain';
 import {
@@ -170,12 +171,33 @@ describe('work boundary and reconciliation', () => {
       ).snapshot;
     expect(taskDepth(state.records.at(-1)!, state.records)).toBe(30);
     expect(taskDepth(state.records[0], state.records)).toBe(0);
+    expect(parentTaskOptions(state.records, parent)).toEqual([]);
+    expect(parentTaskOptions(state.records, state.records.at(-1)!.id)).toHaveLength(30);
+    expect(parentTaskOptions(state.records)).toHaveLength(31);
     expect(() =>
       applyWork(
         state,
         mutation({ parentId: state.records.at(-1)!.id }, { recordId: parent, at: now + 1 }),
       ),
     ).toThrow('task_cycle');
+  });
+  it('excludes descendants through deleted nodes and terminates on corrupted cycles', () => {
+    let state = create({ title: 'Root' });
+    const root = state.records[0].id;
+    state = applyWork(state, mutation({ title: 'Child', parentId: root })).snapshot;
+    const child = state.records[1].id;
+    state = applyWork(state, mutation({ title: 'Grandchild', parentId: child })).snapshot;
+    state = applyWork(state, mutation({ title: 'Unrelated' })).snapshot;
+    const other = state.records[3].id;
+    const records = structuredClone(state.records);
+    records[1].deletedAt = new Date(now).toISOString();
+    records[0].data.parentId = records[2].id;
+    expect(parentTaskOptions(records, root).map((r) => r.id)).toEqual([other]);
+    expect(parentTaskOptions(records, uuid()).map((r) => r.id)).toEqual([
+      root,
+      records[2].id,
+      other,
+    ]);
   });
   it('validates areas, milestones and project references', () => {
     let state = applyWork(emptyWork(), mutation({ title: 'Work' }, { kind: 'area' })).snapshot;

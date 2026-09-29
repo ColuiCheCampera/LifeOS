@@ -29,6 +29,7 @@ import {
   dateAt,
   taskDepth,
   taskEditorValues,
+  parentTaskOptions,
 } from './domain';
 import { copy, type Copy } from './copy';
 import { applyBatch } from './batch';
@@ -271,7 +272,13 @@ function Editor({
               {text('estimate', 'number')}
               {text('actual', 'number')}
               {select('projectId', options('project'))}
-              {select('parentId', options('task'))}
+              {select(
+                'parentId',
+                parentTaskOptions(records, edit.record?.id).map((r) => ({
+                  id: r.id,
+                  title: String(r.data.title),
+                })),
+              )}
               <label>
                 {c.tags}
                 <input
@@ -659,6 +666,7 @@ function TaskRow({
   onEdit,
   onChange,
   onDelete,
+  onAddSubtask,
   onMove,
   onDrop,
 }: {
@@ -669,11 +677,17 @@ function TaskRow({
   onEdit: () => void;
   onChange: (patch: Record<string, unknown>, operation?: 'upsert' | 'complete') => void;
   onDelete: () => void;
+  onAddSubtask: () => void;
   onMove: (direction: number) => void;
   onDrop: (id: string) => void;
 }) {
   const c = useCopy();
   const task = taskData(record);
+  const parent = records.find((r) => r.kind === 'task' && r.id === task.parentId);
+  const children = records.filter(
+    (r) => r.kind === 'task' && !r.deletedAt && r.data.parentId === record.id,
+  );
+  const childrenDone = children.filter((r) => r.data.status === 'done').length;
   const start = useRef<{ x: number; y: number } | null>(null);
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClick = useRef(false);
@@ -794,6 +808,21 @@ function TaskRow({
           {task.tags.map((t) => ' #' + t).join('')}
           {task.recurrence && ' ↻'}
         </span>
+        {(parent || children.length > 0) && (
+          <span>
+            {parent && (
+              <>
+                {c.parentId}: {String(parent.data.title)}
+                {parent.deletedAt ? ` (${c.trash})` : ''}
+              </>
+            )}
+            {parent && children.length > 0 && ' · '}
+            {children.length > 0 &&
+              c.subtaskProgress
+                .replace('{done}', String(childrenDone))
+                .replace('{total}', String(children.length))}
+          </span>
+        )}
       </button>
       <span className={`priority-tag priority-${task.priority}`}>P{task.priority}</span>
       <button
@@ -807,6 +836,15 @@ function TaskRow({
         <div className="task-actions">
           <Button variant="ghost" onClick={onEdit}>
             {c.edit}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setMenu(false);
+              onAddSubtask();
+            }}
+          >
+            {c.newSubtask}
           </Button>
           <Button variant="ghost" onClick={() => onMove(-1)} aria-label={c.up}>
             <ArrowUp size={18} />
@@ -833,8 +871,8 @@ function VirtualList({
   render: (r: WorkRecord) => React.ReactNode;
 }) {
   const [top, setTop] = useState(0);
-  const height = 88;
-  const start = Math.max(0, Math.floor(top / height) - 5);
+  const height = 112;
+  const start = Math.min(Math.max(0, Math.floor(top / height) - 5), Math.max(0, rows.length - 22));
   const visible = rows.length > 100 ? rows.slice(start, start + 22) : rows;
   return (
     <div
@@ -985,6 +1023,9 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
       onEdit={() => setEdit({ kind: 'task', record: r })}
       onChange={(p, op) => void change(r, p, op)}
       onDelete={() => void remove(r)}
+      onAddSubtask={() =>
+        setEdit({ kind: 'task', initial: { parentId: r.id, projectId: r.data.projectId ?? null } })
+      }
       onDrop={(id) => {
         const source = records.find((item) => item.id === id);
         if (source && source.id !== r.id)
@@ -1568,7 +1609,7 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
               ))}
             </>
           ) : (
-            <VirtualList rows={filtered} render={row} />
+            <VirtualList key={`${view}:${query}:${group}`} rows={filtered} render={row} />
           )}
           {!filtered.length && view !== 'calendar' && view !== 'board' && (
             <Empty c={c} onAdd={openCapture} />

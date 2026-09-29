@@ -1,3 +1,13 @@
+# M3 subtasks and long lists — 29 September 2026
+
+Added direct subtask creation from task-row actions with parent/project prefilled, parent labels and completion counts for direct children. Parent selection excludes self and descendants while retaining the existing server checks. Windowed lists reserve a consistent 104px row plus 8px gap and reset their scroll position when filtering.
+
+Validation: TypeScript, ESLint, Prettier, 95 unit tests, all 22 Chromium scenarios and the production PWA build passed. Selected coverage: 97.61% statements, 93.91% branches, 97.50% functions and 98.89% lines. Unit checks include a 30-level hierarchy, deleted intermediate nodes and cycle-safe traversal. New browser scenarios verify offline child/grandchild creation, inherited project, unavailable cyclic parent choices, independent completion, reload/replay, and filtering a 130-task list down to 111 tasks with a reset scroll window and measured row spacing.
+
+Mobile axe reports zero violations; the hierarchy screenshot was visually inspected. Scope audit passed; client JavaScript is 1,016 KiB gzip against the 1,200 KiB budget. No database migration or personal data changes were required; fixtures used the isolated test database. M4 remains pending.
+
+---
+
 # M3 quick capture — 29 September 2026
 
 Quick capture now supports project selection and Save and add another, preserves unsaved drafts until explicit discard, prevents duplicate submissions and transfers drafts into the detailed editor without stale reuse. New prefilled records require discard confirmation. Clearing recurrence works; dialog actions wrap on mobile and shortcuts do not stack dialogs over an open editor.

@@ -327,6 +327,26 @@ export function taskDepth(record: WorkRecord, records: WorkRecord[]) {
   return depth;
 }
 
+export function parentTaskOptions(records: WorkRecord[], taskId?: string) {
+  const tasks = records.filter((r) => r.kind === 'task');
+  const children = new Map<string, string[]>();
+  for (const task of tasks) {
+    if (typeof task.data.parentId !== 'string') continue;
+    const siblings = children.get(task.data.parentId) ?? [];
+    siblings.push(task.id);
+    children.set(task.data.parentId, siblings);
+  }
+  const excluded = new Set<string>();
+  const pending = taskId ? [taskId] : [];
+  while (pending.length) {
+    const id = pending.pop()!;
+    if (excluded.has(id)) continue;
+    excluded.add(id);
+    pending.push(...(children.get(id) ?? []));
+  }
+  return tasks.filter((task) => !task.deletedAt && !excluded.has(task.id));
+}
+
 export function fuzzyScore(text: string, query: string) {
   const normalized = (s: string) =>
     s

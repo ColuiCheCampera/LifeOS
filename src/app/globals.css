@@ -1960,8 +1960,8 @@ html[data-font='large'] .nav-link {
   overscroll-behavior: contain;
 }
 .virtual-tasks > .task-row {
-  height: 80px;
-  min-height: 80px;
+  height: 104px;
+  min-height: 104px;
 }
 .review-grid {
   display: grid;
