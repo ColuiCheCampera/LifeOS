@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
-import { login } from './helpers';
+import { login, resetRateLimits } from './helpers';
+test.beforeEach(resetRateLimits);
 import { testEnv } from '../env';
 const headers = { Origin: testEnv.AUTH_URL };
 test('manifest, worker install and public-only caches', async ({ page, request }) => {

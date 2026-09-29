@@ -1704,6 +1704,7 @@ html[data-font='large'] .nav-link {
 }
 .work-dialog footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 24px;

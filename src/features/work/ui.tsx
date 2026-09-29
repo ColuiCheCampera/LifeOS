@@ -142,11 +142,12 @@ function Editor({
   const [form, setForm] = useState<Record<string, unknown>>(() => ({ ...initial }));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const saveLock = useRef(false);
   const value = (k: string) => String(form[k] ?? '');
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
-  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial) || (!edit.record && !!form.title);
   const dismiss = () => {
-    if (busy) return;
+    if (saveLock.current) return;
     if (!dirty || window.confirm(c.saveFirst)) close();
   };
   const select = (key: string, options: { id: string; title: string }[], nullable = true) => (
@@ -183,7 +184,7 @@ function Editor({
             key,
             ['estimate', 'actual', 'priority'].includes(key)
               ? Number(e.target.value)
-              : e.target.value || null,
+              : e.target.value || (type === 'date' ? null : ''),
           )
         }
       />
@@ -191,6 +192,8 @@ function Editor({
   );
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    if (saveLock.current) return;
+    saveLock.current = true;
     setBusy(true);
     setError('');
     try {
@@ -225,6 +228,7 @@ function Editor({
     } catch {
       setError(c.error);
     } finally {
+      saveLock.current = false;
       setBusy(false);
     }
   }
@@ -371,6 +375,7 @@ function Editor({
             <Button
               type="button"
               variant="ghost"
+              disabled={busy}
               onClick={async () => {
                 if (window.confirm(c.deleteConfirm)) {
                   try {
@@ -404,6 +409,11 @@ export function WorkOverlays() {
   const [palette, setPalette] = useState(false);
   const [help, setHelp] = useState(false);
   const [text, setText] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
+  const captureLock = useRef(false);
+  const captureInput = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   const [edit, setEdit] = useState<Edit | null>(null);
   const [error, setError] = useState('');
@@ -415,9 +425,14 @@ export function WorkOverlays() {
     }
   }, [text, zone]);
   useEffect(() => {
-    const open = () => setCapture(true);
+    const open = () => {
+      if (!document.querySelector('dialog[open]')) setCapture(true);
+    };
     const key = (e: KeyboardEvent) => {
-      if (document.querySelector('dialog[open]') && !(e.metaKey || e.ctrlKey)) return;
+      if (document.querySelector('dialog[open]')) {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') e.preventDefault();
+        return;
+      }
       const typing = (e.target as HTMLElement).matches(
         'input,textarea,select,[contenteditable=true]',
       );
@@ -441,16 +456,40 @@ export function WorkOverlays() {
       window.removeEventListener('keydown', key);
     };
   }, []);
-  async function save(e: React.FormEvent) {
+  function resetCapture() {
+    setText('');
+    setProjectId('');
+    setError('');
+    setSavedMessage('');
+  }
+  function dismissCapture() {
+    if (captureLock.current) return;
+    if (text.trim() && !window.confirm(c.saveFirst)) return;
+    setCapture(false);
+    resetCapture();
+  }
+  async function save(e: React.SyntheticEvent, keepOpen = false) {
     e.preventDefault();
+    if (captureLock.current) return;
+    captureLock.current = true;
+    setSaving(true);
+    setError('');
+    setSavedMessage('');
     try {
       if (!parsed?.title) throw new Error();
-      await action('task', uuidv7(), parsed);
+      await action('task', uuidv7(), { ...parsed, projectId: projectId || null });
       setText('');
-      setCapture(false);
-      setError('');
+      if (keepOpen) setSavedMessage(c.captureSaved);
+      else {
+        setCapture(false);
+        resetCapture();
+      }
     } catch {
-      setError(c.invalid);
+      setError(parsed?.title ? c.error : c.invalid);
+    } finally {
+      captureLock.current = false;
+      setSaving(false);
+      if (keepOpen) requestAnimationFrame(() => captureInput.current?.focus());
     }
   }
   return (
@@ -469,22 +508,40 @@ export function WorkOverlays() {
         </button>
       </div>
       {capture && (
-        <Dialog
-          title={c.capture}
-          onClose={() => {
-            setCapture(false);
-            setText('');
-          }}
-        >
-          <form onSubmit={save} data-unsaved={!!text}>
+        <Dialog title={c.capture} onClose={dismissCapture}>
+          <form onSubmit={save} data-unsaved={!!text.trim()} aria-busy={saving}>
             <label>
               {c.newTask}
               <input
+                ref={captureInput}
                 autoFocus
+                disabled={saving}
                 value={text}
                 placeholder={c.captureHint}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  setText(e.target.value);
+                  setError('');
+                  setSavedMessage('');
+                }}
               />
+            </label>
+            <label>
+              {c.projectId}
+              <select
+                aria-label={c.projectId}
+                value={projectId}
+                disabled={saving}
+                onChange={(e) => setProjectId(e.target.value)}
+              >
+                <option value="">{c.inbox}</option>
+                {records
+                  .filter((r) => r.kind === 'project' && !r.deletedAt)
+                  .map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {String(r.data.title)}
+                    </option>
+                  ))}
+              </select>
             </label>
             <div className="capture-preview">
               <small>{c.preview}</small>
@@ -502,18 +559,32 @@ export function WorkOverlays() {
               </p>
             </div>
             {error && <p role="alert">{error}</p>}
+            <p role="status">{saving ? c.captureSaving : savedMessage}</p>
             <footer>
               <Button
                 type="button"
                 variant="outline"
+                disabled={saving}
                 onClick={() => {
-                  setEdit({ kind: 'task', initial: parsed ?? {} });
+                  setEdit({
+                    kind: 'task',
+                    initial: { ...(parsed ?? { title: text }), projectId: projectId || null },
+                  });
                   setCapture(false);
+                  resetCapture();
                 }}
               >
                 {c.more}
               </Button>
-              <Button disabled={!parsed?.title || !settings.data}>{c.save}</Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving || !parsed?.title || !settings.data}
+                onClick={(e) => void save(e, true)}
+              >
+                {c.saveAnother}
+              </Button>
+              <Button disabled={saving || !parsed?.title || !settings.data}>{c.save}</Button>
             </footer>
           </form>
         </Dialog>

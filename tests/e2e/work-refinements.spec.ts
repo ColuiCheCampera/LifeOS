@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { login } from './helpers';
+import { login, resetRateLimits } from './helpers';
+test.beforeEach(resetRateLimits);
 
 test('project filters and task editor preserve deliberate changes', async ({ page }) => {
   await login(page);
@@ -33,12 +34,16 @@ test('project filters and task editor preserve deliberate changes', async ({ pag
   await expect(dialog).toBeVisible();
   await expect(dialog.getByLabel('Scadenza', { exact: true })).toHaveValue('2026-03-29');
   await dialog.getByRole('button', { name: 'Salva', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
   await expect(page.locator('[data-sync-status]')).toHaveAttribute('data-sync-status', 'synced');
-  const snapshot = await (await page.request.get('/api/work')).json();
-  const task = snapshot.records.find(
-    (r: { data: { title: string } }) => r.data.title === 'Orario stabile',
-  );
-  expect(task.data.dueAt).toBe('2026-03-29T15:00:00Z');
+  await expect
+    .poll(async () => {
+      const snapshot = await (await page.request.get('/api/work')).json();
+      return snapshot.records.find(
+        (r: { data: { title: string } }) => r.data.title === 'Orario stabile',
+      )?.data.dueAt;
+    })
+    .toBe('2026-03-29T15:00:00Z');
   await project.locator('.task-main').click();
   await dialog.getByLabel('Titolo', { exact: true }).fill('Da scartare');
   page.once('dialog', (confirmation) => confirmation.accept());

@@ -4,7 +4,8 @@ import { Pool } from 'pg';
 import { testEnv } from '../env';
 const pool = new Pool({ connectionString: testEnv.DATABASE_URL });
 test.afterAll(() => pool.end());
-import { login } from './helpers';
+import { login, resetRateLimits } from './helpers';
+test.beforeEach(resetRateLimits);
 test('every private route denies unauthenticated access and security headers are present', async ({
   page,
   request,

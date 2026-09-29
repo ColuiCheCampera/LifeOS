@@ -1,3 +1,13 @@
+# M3 quick capture — 29 September 2026
+
+Quick capture now supports project selection and Save and add another, preserves unsaved drafts until explicit discard, prevents duplicate submissions and transfers drafts into the detailed editor without stale reuse. New prefilled records require discard confirmation. Clearing recurrence works; dialog actions wrap on mobile and shortcuts do not stack dialogs over an open editor.
+
+Validation: TypeScript, ESLint, Prettier, 94 unit tests, all 20 Chromium scenarios and the production PWA build passed. Scope audit passed; production client JavaScript is 1,015 KiB gzip against the 1,200 KiB budget. The new browser test verifies project retention, focus restoration, canceled/confirmed discard, duplicate form submissions in both editors, recurrence clearing, offline reload/replay and exactly three persisted tasks. Mobile axe reports zero violations and the capture screenshot was visually inspected.
+
+The expanded suite exposed accumulated rate-limit counters across scenarios. Each scenario now clears only the isolated test database's counters before running; production protections and the dedicated rate-limit test remain intact. The date-edit regression now waits for dialog closure and the server value instead of reading before the asynchronous save finishes. Test services use the separate OIDC issuer and disposable database, with no personal credentials or data. Unsaved drafts remain in memory only; they are not reload-persistent. M4 remains pending.
+
+---
+
 # M3 bulk task actions — 28 September 2026
 
 Added select-all for filtered task lists/Kanban, bulk priority, move-to-Inbox and reopen controls. Bulk writes now await durable local persistence, prevent duplicate submissions and retain failures for retry; deletion requires confirmation with the selected count. Filtering clears stale selection. Individual writes remain independently durable, not an atomic batch.

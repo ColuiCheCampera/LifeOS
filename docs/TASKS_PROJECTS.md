@@ -10,6 +10,8 @@ Use **Nuova attività** or press **N** outside a text field. Quick capture previ
 
 Dates are resolved in the configured timezone. Italian/English today, tomorrow, weekdays, ISO dates, explicit times, priorities and hashtags work offline. Unrecognized wording stays in the title; there is no AI service in M3. Ambiguous/nonexistent explicit local times during daylight-saving changes are rejected for correction.
 
+Quick capture includes a project selector (Inbox by default). **Save and add another** keeps the selected project, clears the text after durable local saving and returns focus to the input. Normal Save closes the panel and resets its fields. Closing a nonempty draft asks before discarding it, including Escape and the mobile close gesture. Ctrl/Cmd+K does not open a second dialog over an editor. Drafts remain in memory until saved; they do not survive a page reload. **More actions** transfers the draft/project to the detailed editor and clears the old quick-capture draft. If parsing fails, the original text is retained as the title for manual correction. Duplicate submissions are blocked while saving. Clearing an existing recurrence in the editor now removes it correctly.
+
 Edit a task to add Markdown notes, a parent task, project, estimate/actual minutes, recurrence, reminder dates and attachment metadata. Markdown never executes raw HTML. Attachment entries are links and metadata, not uploaded file content. Parent depth has no arbitrary limit; cyclic and foreign-account relationships are rejected.
 
 ## Views and organization

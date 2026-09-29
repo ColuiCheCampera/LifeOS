@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
-import { login } from './helpers';
+import { login, resetRateLimits } from './helpers';
 import { testEnv } from '../env';
+test.beforeEach(resetRateLimits);
 
 test('filtered bulk actions persist offline and preserve unselected tasks', async ({ page }) => {
   await login(page);
