@@ -7,7 +7,7 @@ import { env } from '@/server/env';
 import { encryptSecret, decryptSecret, tokenHash } from '@/server/security/policy';
 import { GoogleCalendarClient, GoogleError } from './google';
 const key = Buffer.from(env.ENCRYPTION_KEY, 'base64');
-const client = () =>
+export const calendarClient = () =>
   new GoogleCalendarClient({
     clientId: env.AUTH_GOOGLE_ID,
     clientSecret: env.AUTH_GOOGLE_SECRET,
@@ -48,7 +48,7 @@ export async function startCalendarConsent(userId: string) {
   });
   return {
     state,
-    url: client().authorizationUrl(
+    url: calendarClient().authorizationUrl(
       state,
       createHash('sha256').update(verifier).digest('base64url'),
     ),
@@ -74,7 +74,7 @@ export async function finishCalendarConsent(userId: string, state: string, code:
       .where(eq(connections.id, row.id));
     return row;
   });
-  const refreshToken = await client().exchange(
+  const refreshToken = await calendarClient().exchange(
     code,
     decipher(claimed.verifierCipher!, userId, 'pkce'),
   );
@@ -102,11 +102,11 @@ export async function calendarConnection(userId: string) {
     .where(eq(connections.userId, userId));
   return { status: row?.status ?? 'disconnected' };
 }
-export async function listGoogleCalendars(userId: string) {
+export async function calendarAccess(userId: string) {
   const [row] = await db.select().from(connections).where(eq(connections.userId, userId));
   if (!row?.refreshCipher || row.status !== 'connected') throw new GoogleError('reconnect');
   try {
-    const tokens = await client().refresh(decipher(row.refreshCipher, userId, 'refresh'));
+    const tokens = await calendarClient().refresh(decipher(row.refreshCipher, userId, 'refresh'));
     if (tokens.refreshToken)
       await db
         .update(connections)
@@ -121,7 +121,6 @@ export async function listGoogleCalendars(userId: string) {
             eq(connections.refreshCipher, row.refreshCipher),
           ),
         );
-    const calendars = await client().calendars(tokens.accessToken);
     // A disconnect while the provider request was in flight must not expose its result.
     const [current] = await db
       .select({ version: connections.version, status: connections.status })
@@ -129,7 +128,7 @@ export async function listGoogleCalendars(userId: string) {
       .where(eq(connections.userId, userId));
     if (!current || current.version !== row.version || current.status !== 'connected')
       throw new GoogleError('reconnect');
-    return calendars;
+    return { accessToken: tokens.accessToken, version: row.version };
   } catch (error) {
     if (error instanceof GoogleError && ['reconnect', 'scope'].includes(error.code))
       await db
@@ -138,6 +137,14 @@ export async function listGoogleCalendars(userId: string) {
         .where(and(eq(connections.userId, userId), eq(connections.version, row.version)));
     throw error;
   }
+}
+export async function listGoogleCalendars(userId: string) {
+  const access = await calendarAccess(userId);
+  const calendars = await calendarClient().calendars(access.accessToken);
+  const [row] = await db.select().from(connections).where(eq(connections.userId, userId));
+  if (row?.version !== access.version || row.status !== 'connected')
+    throw new GoogleError('reconnect');
+  return calendars;
 }
 export async function disconnectCalendar(userId: string) {
   // Forget Calendar credentials locally. Revoking Google's combined grant would also revoke identity access.

@@ -36,5 +36,19 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+  calendar-worker:
+    build:
+      context: .
+      target: build
+    user: node
+    env_file: .env.local
+    environment:
+      DATABASE_URL: postgresql://lifeos:${POSTGRES_PASSWORD}@postgres:5432/lifeos
+      NODE_ENV: production
+    command: ['npm', 'run', 'worker:calendar']
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 volumes:
   postgres-data:

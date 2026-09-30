@@ -2237,3 +2237,48 @@ html[data-font='large'] .nav-link {
     grid-column-start: auto !important;
   }
 }
+.calendar-provider {
+  margin-block: 16px;
+}
+.calendar-provider summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+.calendar-provider fieldset {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 0;
+}
+.calendar-source,
+.calendar-conflict-card {
+  padding-block: 12px;
+  border-top: 1px solid var(--border);
+}
+.calendar-conflict-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.calendar-conflict-preview > div {
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.calendar-note {
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.calendar-provider select {
+  max-width: 100%;
+}
+.calendar-provider .calendar-toolbar label {
+  min-width: 0;
+  max-width: 100%;
+}

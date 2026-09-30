@@ -11,6 +11,7 @@ import { dateAt, todayIn } from '@/features/work/domain';
 import type { WorkRecord } from '@/features/work/schema';
 import { eventSchema, type CalendarEvent } from './schema';
 import { bounds, calendarRange, freeSlot, moveSchedule, occurrences, overlaps } from './domain';
+import { CalendarSyncPanel } from './sync-ui';
 
 export function CalendarApp() {
   const english = useLocale() === 'en';
@@ -125,6 +126,7 @@ export function CalendarApp() {
         </Button>
       </header>
       <SyncPanel />
+      <CalendarSyncPanel />
       <div className="calendar-toolbar">
         <Button
           variant="outline"
@@ -217,6 +219,7 @@ export function CalendarApp() {
                   (r) => r.kind === 'event' && r.id === e.dataTransfer.getData('lifeos-event'),
                 );
                 if (event) {
+                  if (event.calendar?.readOnly) return;
                   const data = eventSchema.parse(event.data);
                   const oldDay = data.schedule.allDay
                     ? data.schedule.start
@@ -255,8 +258,8 @@ export function CalendarApp() {
                   <article
                     key={event.key}
                     className="calendar-event"
-                    style={{ borderInlineStartColor: data.color }}
-                    draggable={!data.recurrence}
+                    style={{ borderInlineStartColor: event.record.calendar?.color ?? data.color }}
+                    draggable={!data.recurrence && !event.record.calendar?.readOnly}
                     onDragStart={(e) => e.dataTransfer.setData('lifeos-event', event.record.id)}
                   >
                     <button
@@ -272,6 +275,28 @@ export function CalendarApp() {
                       <strong>{data.title}</strong>
                     </button>
                     {data.location && <small>{data.location}</small>}
+                    {event.record.calendar && (
+                      <small>
+                        {event.record.calendar.name} ·{' '}
+                        {event.record.calendar.readOnly
+                          ? t('Sola lettura', 'Read-only')
+                          : event.record.calendar.state === 'conflict'
+                            ? t('Conflitto Google', 'Google conflict')
+                            : event.record.calendar.state === 'pending'
+                              ? t('Da inviare a Google', 'Pending Google sync')
+                              : t('Collegato a Google', 'Linked to Google')}
+                      </small>
+                    )}
+                    {event.record.calendar?.meetUrl && (
+                      <a
+                        className="button button-outline"
+                        href={event.record.calendar.meetUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Google Meet
+                      </a>
+                    )}
                     {data.taskId && <small>{t('Blocco attività', 'Task time block')}</small>}
                     {conflict && (
                       <small className="calendar-conflict">
@@ -347,11 +372,23 @@ export function CalendarApp() {
                 <span>{String(r.data.title)}</span>
                 <Button
                   variant="outline"
-                  disabled={now - Date.parse(r.deletedAt!) > 30 * 86400000}
+                  disabled={
+                    now - Date.parse(r.deletedAt!) > 30 * 86400000 ||
+                    !!r.calendar?.readOnly ||
+                    r.calendar?.canRestore === false
+                  }
                   onClick={() => void write(r, {}, 'restore')}
                 >
                   {t('Ripristina', 'Restore')}
                 </Button>
+                {r.calendar && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setEdit({ initial: eventSchema.parse(r.data) })}
+                  >
+                    {t('Crea copia locale', 'Create local copy')}
+                  </Button>
+                )}
               </div>
             ))}
       </section>
@@ -473,7 +510,15 @@ function EventEditor({
         </button>
       </header>
       <form onSubmit={save} className="calendar-form" data-unsaved={dirty}>
-        <fieldset disabled={busy}>
+        {record?.calendar?.readOnly && (
+          <p>
+            {t(
+              'Questo evento Google è in sola lettura. Puoi consultarlo e chiudere il pannello con ×.',
+              'This Google event is read-only. You can view it and close the panel with ×.',
+            )}
+          </p>
+        )}
+        <fieldset disabled={busy || record?.calendar?.readOnly}>
           {initial.recurrence && (
             <p>
               {t(
@@ -561,6 +606,7 @@ function EventEditor({
             {t('Ricorrenza RRULE', 'RRULE recurrence')}
             <input
               placeholder="FREQ=WEEKLY;COUNT=4"
+              disabled={!!record?.calendar}
               value={data.recurrence}
               onChange={(e) => setData({ ...data, recurrence: e.target.value })}
             />

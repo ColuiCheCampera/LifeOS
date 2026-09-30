@@ -11,6 +11,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Auth } from '@auth/core';
 import Google from '@auth/core/providers/google';
 import { calendarProvider } from './calendar-provider';
+import { controlRemote } from './calendar-remote';
 async function main() {
   const pg = new EmbeddedPostgres({
     databaseDir: `./work/test-postgres-${randomUUID()}`,
@@ -54,12 +55,22 @@ async function main() {
           state: string;
           code: string;
           action: string;
+          sourceId?: string;
+          operation?: string;
+          event?: Record<string, unknown>;
         };
         const { rows } = await pool.query('SELECT id FROM users WHERE email=$1', [
           testEnv.ALLOWED_EMAIL,
         ]);
         const service = await import('../src/features/calendar/connection');
         try {
+          const sync = await import('../src/features/calendar/sync-service');
+          if (body.action === 'remote')
+            return send(controlRemote(body.operation ?? 'inspect', body.event));
+          if (body.action === 'configure')
+            await sync.configureSource(rows[0].id, 'test-calendar', true);
+          if (body.action === 'sync') await sync.syncSource(rows[0].id, body.sourceId!);
+          if (body.action === 'jobs') await sync.runCalendarJobs();
           if (body.action === 'finish')
             await service.finishCalendarConsent(rows[0].id, body.state, body.code);
           if (body.action === 'calendars')

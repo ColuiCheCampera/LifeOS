@@ -85,8 +85,8 @@ export function CalendarConnectionPanel() {
       <h3>Google Calendar</h3>
       <p>
         {t(
-          'Il consenso è separato dal login. Puoi collegare l’account e verificare i calendari accessibili. Gli eventi del calendario LifeOS restano locali: lo scambio degli eventi con Google non è ancora attivo.',
-          'Consent is separate from sign-in. Connect your account and verify available calendars. LifeOS calendar events remain local: exchanging events with Google is not yet active.',
+          'Il consenso è separato dal login. Dopo aver collegato l’account, scegli i calendari da sincronizzare nella pagina Calendario. Gli eventi locali restano privati finché non scegli di pubblicarli.',
+          'Consent is separate from sign-in. After connecting, choose calendars to sync on the Calendar page. Local events stay private until you choose to publish them.',
         )}
       </p>
       {result === 'failed' && (

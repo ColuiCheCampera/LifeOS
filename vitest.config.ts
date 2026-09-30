@@ -23,6 +23,7 @@ export default defineConfig({
         'src/features/calendar/schema.ts',
         'src/features/calendar/domain.ts',
         'src/features/calendar/google.ts',
+        'src/features/calendar/provider-schema.ts',
       ],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },

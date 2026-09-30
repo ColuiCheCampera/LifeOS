@@ -1,3 +1,17 @@
+# M4 increment 2: two-way Google synchronization — 30 September 2026
+
+Added calendar selection/pause, nonrecurring event import and explicit publication, source colors, Meet links, read-only access, and conflict previews with local-copy preservation. A persistent worker stores cursors/retries in PostgreSQL, merges disjoint edits, uses conditional writes and deterministic creation IDs, and recovers expired cursors without dropping pending local changes. Local launcher and Compose include the worker; manual/Vercel setup is documented in CALENDAR.md. M4 remains in progress for Google recurring series, watch channels and richer timeline gestures.
+
+Validation: strict TypeScript, ESLint, Prettier, 127 unit tests, all 25 Chromium scenarios and production PWA build passed. Selected domain coverage: 97.57% statements, 95.38% branches, 96.72% functions and 98.67% lines. Migration 0005 applied to isolated PostgreSQL; schema regeneration reports no drift. Production dependency audit reports zero vulnerabilities.
+
+Scope audit passed against source and build output; production JavaScript is 1,072 KiB gzip against the 1,200 KiB budget. After disabling unsupported recurrence editing on Google-linked events, the focused browser scenario and production build were rerun successfully.
+
+The new end-to-end scenario covers authenticated/CSRF guards, paginated initial import, UTC normalization, all-day events, encrypted offline editing, disjoint merging, stale conflict preview rejection, preserving local copies, a provider write race (412), deletion/edit conflicts, duplicate publication requests, a lost creation response, full recovery after 410 including missing remote records, reader calendars, events with guests, quota backoff, outgoing deletion and paused sources. The worker's job runner and real database/domain services run with transport mocked only in the test harness; production Google endpoints remain fixed. Mobile axe reports zero violations; the conflict-panel screenshot was inspected. Tests caught and fixed a skipped heading level, and calendar fixtures now reset only the disposable test cluster to avoid cross-scenario state leakage.
+
+No live Google account, personal database or deployment was changed. Docker/external worker execution and real Google provider behavior remain unverified. Reminder synchronization is limited to initial import/creation; unsupported recurring and special Google events are explicitly counted and excluded from availability suggestions.
+
+---
+
 # M4 increment 1: local calendar and Google consent — 30 September 2026
 
 Implemented local offline events, five date-range views, recurring series, overlap/free-slot helpers, task time blocks, desktop day moves and an accessible event editor/trash. Added a separate Google Calendar consent flow and calendar metadata check in Settings. M4 remains in progress: no provider event import/export, two-way synchronization, watch channels or persistent worker is enabled.

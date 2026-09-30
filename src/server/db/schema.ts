@@ -8,12 +8,14 @@ import {
   index,
   uniqueIndex,
   check,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import type { FieldClocks } from '@/features/sync/schema';
 import type { WorkRecord } from '@/features/work/schema';
 import type { Preferences } from '@/features/settings/schema';
+import type { ProviderEvent, SharedEvent } from '@/features/calendar/provider-schema';
 const metadata = () => ({
   id: uuid('id').primaryKey().$defaultFn(uuidv7),
   userId: uuid('user_id').notNull(),
@@ -178,5 +180,53 @@ export const calendarConnections = pgTable(
   (t) => [
     uniqueIndex('calendar_connections_user').on(t.userId),
     check('calendar_connections_version_positive', sql`${t.version}>0`),
+  ],
+);
+
+export const calendarSources = pgTable(
+  'calendar_sources',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    remoteId: text('remote_id').notNull(),
+    name: text('name').notNull(),
+    color: text('color').notNull(),
+    timezone: text('timezone').notNull(),
+    role: text('role').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    syncToken: text('sync_token'),
+    nextRun: timestamp('next_run', { withTimezone: true }).notNull().defaultNow(),
+    lastSynced: timestamp('last_synced', { withTimezone: true }),
+    failures: integer('failures').notNull().default(0),
+    error: text('error'),
+  },
+  (t) => [
+    uniqueIndex('calendar_sources_user_remote').on(t.userId, t.remoteId),
+    index('calendar_sources_due').on(t.enabled, t.nextRun),
+  ],
+);
+export const calendarBindings = pgTable(
+  'calendar_bindings',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => calendarSources.id, { onDelete: 'cascade' }),
+    eventId: uuid('event_id').references(() => calendarEvents.id, { onDelete: 'cascade' }),
+    remoteId: text('remote_id').notNull(),
+    etag: text('etag'),
+    base: jsonb('base').$type<SharedEvent | null>(),
+    remote: jsonb('remote').$type<ProviderEvent | null>(),
+    state: text('state').notNull().default('pending'),
+  },
+  (t) => [
+    uniqueIndex('calendar_bindings_remote').on(t.userId, t.sourceId, t.remoteId),
+    uniqueIndex('calendar_bindings_event').on(t.userId, t.eventId),
+    index('calendar_bindings_source').on(t.userId, t.sourceId),
   ],
 );

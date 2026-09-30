@@ -11,11 +11,15 @@ import {
   mutationReceipts,
   auditLogs,
   calendarEvents,
+  calendarSources,
+  calendarBindings,
 } from '@/server/db/schema';
 import { getSettings } from '@/features/settings/service';
 import { tokenHash } from '@/server/security/policy';
 import { applyWork } from './domain';
 import { kindSchema, type Kind, type WorkRecord, type WorkMutation } from './schema';
+import { eventSchema } from '@/features/calendar/schema';
+import { sameShared, sharedEvent } from '@/features/calendar/provider-schema';
 const tables = {
   event: calendarEvents,
   task: tasks,
@@ -41,6 +45,34 @@ async function read(tx: Transaction, userId: string) {
         clocks: r.fieldClocks,
       })),
     );
+  }
+  const bindings = await tx
+    .select({ binding: calendarBindings, source: calendarSources })
+    .from(calendarBindings)
+    .innerJoin(
+      calendarSources,
+      and(eq(calendarBindings.sourceId, calendarSources.id), eq(calendarSources.userId, userId)),
+    )
+    .where(eq(calendarBindings.userId, userId));
+  for (const { binding, source } of bindings) {
+    const event = records.find((r) => r.kind === 'event' && r.id === binding.eventId);
+    if (!event) continue;
+    const local = event.deletedAt ? null : sharedEvent(eventSchema.parse(event.data));
+    event.calendar = {
+      sourceId: source.id,
+      name: source.name,
+      color: source.color,
+      readOnly:
+        !['owner', 'writer'].includes(source.role) ||
+        binding.state === 'unsupported' ||
+        !!binding.remote?.attendees?.length,
+      state:
+        binding.state === 'synced' && !sameShared(local, binding.base) ? 'pending' : binding.state,
+      canRestore: binding.remote?.status !== 'cancelled',
+      meetUrl: binding.remote?.hangoutLink?.startsWith('https://meet.google.com/')
+        ? binding.remote.hangoutLink
+        : null,
+    };
   }
   return records;
 }
@@ -76,6 +108,11 @@ export async function mutateWork(userId: string, mutation: WorkMutation) {
     if (mutation.at > Date.now() + 300000) return { error: 'clock_skew' };
     const before = await read(tx, userId);
     const original = before.find((r) => r.id === mutation.recordId);
+    if (original?.calendar?.readOnly) return { error: 'calendar_read_only' };
+    if (original?.calendar && mutation.patch.recurrence)
+      return { error: 'google_recurrence_unsupported' };
+    if (original?.calendar && mutation.operation === 'restore' && !original.calendar.canRestore)
+      return { error: 'google_deleted_copy_required' };
     if (
       mutation.operation === 'restore' &&
       original?.deletedAt &&

@@ -98,6 +98,18 @@ export const recordSchema = z
     deletedAt: time,
     version: z.number().int().positive(),
     clocks: z.record(z.string(), clock),
+    calendar: z
+      .object({
+        sourceId: z.uuid(),
+        name: z.string(),
+        color: z.string(),
+        readOnly: z.boolean(),
+        state: z.string(),
+        canRestore: z.boolean(),
+        meetUrl: z.url().nullable(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((r, ctx) => {

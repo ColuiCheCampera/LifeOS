@@ -9,6 +9,7 @@
     "dev": "npm run pwa:build && next dev --hostname 0.0.0.0",
     "build": "npm run pwa:build && next build",
     "start": "next start --hostname 0.0.0.0",
+    "worker:calendar": "node --conditions=react-server --import tsx scripts/calendar-worker.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",

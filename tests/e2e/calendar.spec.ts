@@ -2,9 +2,10 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { login, resetRateLimits } from './helpers';
+import { login, resetRateLimits, resetCalendarFixtures } from './helpers';
 import { testEnv } from '../env';
 test.beforeEach(resetRateLimits);
+test.beforeEach(resetCalendarFixtures);
 const headers = { Origin: testEnv.AUTH_URL };
 
 test('calendar offline creation, conflicts, timeblocking, restore and replay', async ({ page }) => {

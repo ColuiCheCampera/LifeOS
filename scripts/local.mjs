@@ -43,11 +43,19 @@ const database = new EmbeddedPostgres({
   onError: () => {},
 });
 let child;
+let calendarWorker;
 let started = false;
 let stopping = false;
 async function stop(code = 0) {
   if (stopping) return;
   stopping = true;
+  if (calendarWorker && calendarWorker.exitCode === null) {
+    calendarWorker.kill('SIGTERM');
+    await new Promise((resolve) => {
+      calendarWorker.once('exit', resolve);
+      setTimeout(resolve, 7000).unref();
+    });
+  }
   if (child && child.exitCode === null) {
     child.kill('SIGTERM');
     await new Promise((resolve) => {
@@ -86,6 +94,17 @@ try {
     const build = spawn(process.execPath, ['scripts/build-pwa.mjs'], { stdio: 'inherit' });
     const code = await new Promise((resolve) => build.once('exit', resolve));
     if (code !== 0) throw new Error('Compilazione PWA fallita');
+    calendarWorker = spawn(
+      process.execPath,
+      ['--conditions=react-server', '--import', 'tsx', 'scripts/calendar-worker.ts'],
+      { stdio: 'inherit', windowsHide: true },
+    );
+    calendarWorker.once('exit', (code) => {
+      if (!stopping && code !== 0)
+        console.error(
+          'Worker Calendario arrestato: riavvia LifeOS per riprendere la sincronizzazione Google.',
+        );
+    });
     child = spawn(
       process.execPath,
       ['node_modules/next/dist/bin/next', 'dev', '--hostname', '127.0.0.1', '--port', '3000'],

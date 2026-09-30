@@ -2,6 +2,7 @@
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { testEnv } from './env';
+import { calendarRemote, calendarRemoteHandlers } from './calendar-remote';
 export const calendarProvider = setupServer(
   http.post('https://oauth2.googleapis.com/token', async ({ request }) => {
     const body = new URLSearchParams(await request.text());
@@ -32,11 +33,12 @@ export const calendarProvider = setupServer(
         {
           id: 'test-calendar',
           summary: '<script>Test calendar</script>',
-          accessRole: 'owner',
+          accessRole: calendarRemote.role,
           backgroundColor: '#28533d',
           timeZone: 'Europe/Rome',
         },
       ],
     }),
   ),
+  ...calendarRemoteHandlers,
 );

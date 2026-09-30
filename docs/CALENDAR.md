@@ -1,6 +1,6 @@
-# Calendar — M4 increment 1
+# Calendar — M4 increments 1–2
 
-This increment starts M4. It does **not** complete Google event synchronization.
+M4 is in progress. Local calendars and two-way synchronization of nonrecurring Google events are available; recurring Google series and watch channels remain pending.
 
 ## Available now
 
@@ -20,13 +20,28 @@ Retained refresh tokens and PKCE verifiers use AES-256-GCM with user/purpose-bou
 
 Disconnect removes LifeOS's stored Calendar credentials and pending consent state, leaving local events and the identity session intact. It does not revoke Google's combined identity/Calendar grant. Revocation can be performed in Google Account permissions. Reconnection/disconnection supersedes an older in-flight consent attempt.
 
-**Connecting does not yet import, export, or publish any events.** The Settings panel states this explicitly. Credentials remain inactive until Check calendars or a later synchronization implementation uses them.
+Connecting alone does not select calendars or publish local events. In Calendar → Google Calendar, choose the calendars to synchronize. Reader calendars and events with guests are read-only; Meet links are available when provided. Pause keeps the imported local snapshot and stops subsequent exchanges. Resume verifies access again. Disconnect stops future jobs; an HTTP write already sent to Google may still finish.
+
+Use Publish a local event to explicitly link a nonrecurring local event to a writable Google calendar. Subsequent changes to title, notes, location and the complete schedule flow both ways, including deletion. Local-only color/task/project links remain intact. Popup reminder offsets are imported initially and sent on creation; later reminder changes are not synchronized. Attendees, conference settings and unsupported Google fields are never patched. Events with guests cannot be changed from LifeOS.
+
+The conflict panel previews both versions. Keep local copy and use Google preserves an independent local event before adopting Google; Use only Google asks before discarding the local version. Both the local event version and remote mirror version must still match the preview. A remotely deleted event cannot be restored under its old Google identity; create a new local copy from Trash instead.
+
+Google recurring series, exceptions, special event types and events exceeding local validation limits are counted as unsupported. They are not expanded or published. Free-slot suggestions consider only the events represented in LifeOS and cannot certify availability across unsupported Google events.
+
+## Worker and recovery
+
+Apply migrations, then run `npm run worker:calendar` in a separate persistent process alongside `npm run dev` or the production web server. `npm run local` starts this worker automatically; Docker Compose has a separate `calendar-worker` service. Vercel needs an external Node 24 worker with this repository, its locked dependencies (including tsx), the same server environment and PostgreSQL. The web process only saves commands; it does not run a background polling loop. Docker and external worker deployment have not been exercised here.
+
+PostgreSQL source rows store cursor, next-run deadline, error and retry count; bindings store the remote identity, ETag, last shared base and latest remote projection. The persisted difference between event and base is the outgoing work queue. The worker checks every five seconds, schedules healthy sources every minute and retries failures with exponential backoff and jitter (22.5 seconds to 75 minutes). Sync Google brings enabled sources forward. A database advisory lock prevents two workers processing the same source; process death releases it.
+
+Every page of an incremental response is fetched before application, and the final cursor is saved only after all incoming records are reconciled. HTTP 410 triggers a complete download while preserving pending local changes; absent remote records become tombstones. A three-way merge combines disjoint field edits and holds competing edits/deletions for review. Conditional PATCH/DELETE use ETags; deterministic creation IDs prevent duplicates after a lost response. Provider import and mirror updates commit together, making replay safe. Each outgoing event holds the existing per-user work lock across its bounded HTTP request (15-second request timeout), trading brief write contention for consistent local state.
+
+Tokens and cursors remain server-side. The browser receives safe source state and event metadata through authenticated, uncached APIs and the encrypted work snapshot. Reconnect all tabs with the current application version before editing; older calendar clients do not understand the added source metadata.
 
 ## Remaining M4 work
 
-- Calendar selection and provider-event mapping, including read-only calendars, recurring series exceptions, Meet links and reminder metadata.
-- Durable two-way event jobs, conditional writes/conflict resolution, incremental sync tokens and 410 full recovery without losing pending local edits.
-- A separate persistent worker, quota backoff/jitter, authenticated watch channels with renewal and polling fallback.
+- Google recurring series/exceptions, richer reminder synchronization and supported guest-edit workflows.
+- Authenticated watch channels with renewal; the current durable scheduler uses PostgreSQL source deadlines rather than the originally planned pg-boss queue.
 - Hourly timeline move/resize and touch creation gestures with visible keyboard alternatives; global event search and Today event widgets.
 
 Do not label M4 complete until those paths and their failure/replay tests are implemented. No personal Google account or personal database was used during automated testing.

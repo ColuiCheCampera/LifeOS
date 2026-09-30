@@ -1,6 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { isAllowedProfile } from '@/server/security/policy';
+import { providerEventSchema, type ProviderEvent } from './provider-schema';
 
 export const calendarScope = 'https://www.googleapis.com/auth/calendar';
 const tokenSchema = z.object({
@@ -25,7 +26,16 @@ export type GoogleCalendar = z.infer<typeof googleCalendarSchema>;
 export class GoogleError extends Error {
   constructor(
     public readonly code:
-      'reconnect' | 'quota' | 'provider' | 'identity' | 'scope' | 'refresh_missing',
+      | 'reconnect'
+      | 'quota'
+      | 'provider'
+      | 'identity'
+      | 'scope'
+      | 'refresh_missing'
+      | 'gone'
+      | 'not_found'
+      | 'precondition'
+      | 'exists',
   ) {
     super(code);
   }
@@ -67,12 +77,16 @@ export class GoogleCalendarClient {
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
+      if (response.status === 410) throw new GoogleError('gone');
+      if (response.status === 404) throw new GoogleError('not_found');
+      if (response.status === 412) throw new GoogleError('precondition');
+      if (response.status === 409) throw new GoogleError('exists');
       // Provider bodies may contain credentials or external text. Never forward or log them.
       if (response.status === 401 || response.status === 400) throw new GoogleError('reconnect');
       if (response.status === 429 || response.status === 403) throw new GoogleError('quota');
       throw new GoogleError('provider');
     }
-    return response.json() as Promise<unknown>;
+    return response.status === 204 ? null : (response.json() as Promise<unknown>);
   }
   private async tokens(values: Record<string, string>) {
     return tokenSchema.parse(
@@ -131,5 +145,78 @@ export class GoogleCalendarClient {
       if (pageToken) seen.add(pageToken);
     } while (pageToken);
     return calendars;
+  }
+  private eventsUrl(calendarId: string, eventId?: string) {
+    return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${eventId ? '/' + encodeURIComponent(eventId) : ''}`;
+  }
+  async events(accessToken: string, calendarId: string, syncToken?: string | null) {
+    const events: ProviderEvent[] = [];
+    const seen = new Set<string>();
+    let pageToken: string | undefined;
+    do {
+      const query = new URLSearchParams({
+        maxResults: '2500',
+        singleEvents: 'false',
+        showDeleted: 'true',
+      });
+      if (syncToken) query.set('syncToken', syncToken);
+      if (pageToken) query.set('pageToken', pageToken);
+      const page = z
+        .object({
+          items: z.array(providerEventSchema).max(2500).default([]),
+          nextPageToken: z.string().max(4096).optional(),
+          nextSyncToken: z.string().max(4096).optional(),
+        })
+        .parse(
+          await this.json(`${this.eventsUrl(calendarId)}?${query}`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }),
+        );
+      events.push(...page.items);
+      if (events.length > 100000) throw new GoogleError('provider');
+      pageToken = page.nextPageToken;
+      if (pageToken && seen.has(pageToken)) throw new GoogleError('provider');
+      if (pageToken) seen.add(pageToken);
+      else {
+        if (!page.nextSyncToken) throw new GoogleError('provider');
+        return { events, syncToken: page.nextSyncToken };
+      }
+    } while (pageToken);
+    throw new GoogleError('provider');
+  }
+  async event(accessToken: string, calendarId: string, eventId: string) {
+    return providerEventSchema.parse(
+      await this.json(this.eventsUrl(calendarId, eventId), {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }),
+    );
+  }
+  async writeEvent(
+    accessToken: string,
+    calendarId: string,
+    eventId: string,
+    body: Record<string, unknown>,
+    etag?: string | null,
+  ) {
+    return providerEventSchema.parse(
+      await this.json(
+        this.eventsUrl(calendarId, etag ? eventId : undefined) + '?sendUpdates=none',
+        {
+          method: etag ? 'PATCH' : 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            ...(etag ? { 'If-Match': etag } : {}),
+          },
+          body: JSON.stringify(etag ? body : { ...body, id: eventId }),
+        },
+      ),
+    );
+  }
+  async deleteEvent(accessToken: string, calendarId: string, eventId: string, etag: string) {
+    await this.json(this.eventsUrl(calendarId, eventId) + '?sendUpdates=none', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}`, 'If-Match': etag },
+    });
   }
 }
