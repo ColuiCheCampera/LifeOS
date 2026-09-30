@@ -54,7 +54,9 @@ All application tables have `id uuid` (UUIDv7 generated server-side), `user_id u
 Full text: generated `search_vector tsvector` + GIN on tasks, projects, events, notes, commitments and bookings; Italian/simple dictionary chosen per locale. Local index uses the same normalized fields in M2/M3. Every feature migration includes common tenant/time indexes plus relevant indexes above. Unbounded task trees use recursive CTEs and cycle validation. Cross-entity links validate ownership and entity existence in a transaction.
 Amounts never use JS floats for arithmetic; exchange rates use fixed decimal strings. Date-only all-day events are distinct from timestamps. Offline reconciliation compares each field clock, tie-breaking by client id; version increments atomically, delete tombstones persist for 30 days. Idempotency receipts prevent duplicate mutation replay.
 
-## M3 implementation
+## Implemented domain tables (M3 and first M4 increment)
+
+M4 increment 1 adds `calendar_events` with the common work payload/field-clock contract and tenant updated/deleted indexes. The payload has title, notes, location, atomic schedule, RRULE, task/project links, color and reminder offsets. `calendar_connections` is unique by user, with AES-GCM refresh/verifier envelopes, status, hashed OAuth state and expiry. These migrations do not yet implement provider calendars, remote event identities, sync cursors, watch channels or a job queue from the planned model above.
 
 `tasks`, `projects`, `areas`, `milestones`, `saved_filters` each have UUIDv7 id, user FK, common timestamps/soft deletion/version, a strictly validated JSON `data` payload and `field_clocks`. Common tenant/updated and tenant/deleted indexes exist on all five. Tasks additionally have expression indexes for due date, project, parent and status, plus a GIN full-text expression over title/notes; projects have a status expression index. These expression indexes are explicitly authored in migration 0002.
 

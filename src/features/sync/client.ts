@@ -89,7 +89,9 @@ async function checkedFetch(input: string, init?: RequestInit) {
 }
 export async function bootstrap() {
   const expected = generation;
-  const payload = bootstrapSchema.parse(await (await checkedFetch('/api/sync?work=1')).json());
+  const payload = bootstrapSchema.parse(
+    await (await checkedFetch('/api/sync?work=1&calendar=1')).json(),
+  );
   if (expected !== generation) throw new LockedError();
   const previous = getLease();
   if (previous && previous.userId !== payload.userId) await purgeLocal();
@@ -288,7 +290,7 @@ export async function enqueueWork(
       kind,
       recordId,
       patch:
-        operation === 'upsert' && !work.records.some((r) => r.id === recordId)
+        kind !== 'event' && operation === 'upsert' && !work.records.some((r) => r.id === recordId)
           ? { position: at, ...patch }
           : patch,
       operation,

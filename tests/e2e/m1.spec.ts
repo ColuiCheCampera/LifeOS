@@ -58,7 +58,7 @@ test('allowed signed OIDC login, settings persistence, conflict and CSRF protect
   await page.goto('/settings');
   await page.getByLabel('Fuso orario', { exact: true }).fill('Europe/Paris');
   await page.getByRole('button', { name: 'Salva modifiche' }).click();
-  await expect(page.getByRole('status')).toHaveText('Preferenze salvate.');
+  await expect(page.locator('.save-bar').getByRole('status')).toHaveText('Preferenze salvate.');
   await expect(page.locator('[data-sync-status]')).toHaveAttribute('data-sync-status', 'synced');
   await page.reload();
   await expect(page.getByLabel('Fuso orario', { exact: true })).toHaveValue('Europe/Paris');
@@ -114,7 +114,7 @@ test('mobile settings, search, keyboard theme choice and localization', async ({
   await page.getByRole('radio', { name: 'Scuro' }).press('Space');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('button', { name: 'Salva modifiche' }).click();
-  await expect(page.getByRole('status')).toHaveText('Preferenze salvate.');
+  await expect(page.locator('.save-bar').getByRole('status')).toHaveText('Preferenze salvate.');
   await expect(page.locator('[data-sync-status]')).toHaveAttribute('data-sync-status', 'synced');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,

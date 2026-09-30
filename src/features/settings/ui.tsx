@@ -24,6 +24,7 @@ import { SyncPanel, useLocalSettings, useLocalWrite } from '@/features/sync/prov
 import { flush, purgeLocal } from '@/features/sync/client';
 import { changedPreferences } from '@/features/sync/reconcile';
 import { preferencesSchema, type Preferences } from './schema';
+import { CalendarConnectionPanel } from '@/features/calendar/connection-ui';
 type SessionRow = {
   id: string;
   device: string;
@@ -60,7 +61,11 @@ export function SettingsPanel({
     setStatus('');
   };
   const sections = [
-    { key: 'account', icon: UserRound, terms: [email, t('connected')] },
+    {
+      key: 'account',
+      icon: UserRound,
+      terms: [email, t('connected'), 'Google Calendar Calendario'],
+    },
     {
       key: 'general',
       icon: Globe2,
@@ -237,10 +242,7 @@ export function SettingsPanel({
                       {t('connected')}
                     </span>
                   </div>
-                  <div className="info-note">
-                    <Info size={17} />
-                    <p>{t('calendarDescription')}</p>
-                  </div>
+                  <CalendarConnectionPanel />
                 </>
               )}
               {key === 'general' && (

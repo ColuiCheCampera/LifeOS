@@ -10,6 +10,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Auth } from '@auth/core';
 import Google from '@auth/core/providers/google';
+import { calendarProvider } from './calendar-provider';
 async function main() {
   const pg = new EmbeddedPostgres({
     databaseDir: `./work/test-postgres-${randomUUID()}`,
@@ -29,6 +30,7 @@ async function main() {
   await migrate(drizzle(pool), { migrationsFolder: './drizzle' });
   const { authConfig } = await import('../src/server/auth/config');
   const { pool: appPool } = await import('../src/server/db');
+  calendarProvider.listen({ onUnhandledRequest: 'bypass' });
   const { privateKey, publicKey } = await generateKeyPair('RS256');
   const jwk = await exportJWK(publicKey);
   Object.assign(jwk, { kid: 'test-key', alg: 'RS256', use: 'sig' });
@@ -45,6 +47,28 @@ async function main() {
         res.end(JSON.stringify(value));
       };
       if (url.pathname === '/ready') return send({ ok: true });
+      if (url.pathname === '/calendar-harness' && req.method === 'POST') {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(Buffer.from(chunk));
+        const body = JSON.parse(Buffer.concat(chunks).toString()) as {
+          state: string;
+          code: string;
+          action: string;
+        };
+        const { rows } = await pool.query('SELECT id FROM users WHERE email=$1', [
+          testEnv.ALLOWED_EMAIL,
+        ]);
+        const service = await import('../src/features/calendar/connection');
+        try {
+          if (body.action === 'finish')
+            await service.finishCalendarConsent(rows[0].id, body.state, body.code);
+          if (body.action === 'calendars')
+            return send({ calendars: await service.listGoogleCalendars(rows[0].id) });
+          return send({ ok: true });
+        } catch (error) {
+          return send({ error: error instanceof Error ? error.message : 'failed' }, 409);
+        }
+      }
       if (url.pathname === '/.well-known/openid-configuration')
         return send({
           issuer,
@@ -157,6 +181,7 @@ async function main() {
   });
   server.listen(4011, '127.0.0.1', () => console.log('Test services ready'));
   const stop = async () => {
+    calendarProvider.close();
     server.close();
     await pool.end();
     await appPool.end();

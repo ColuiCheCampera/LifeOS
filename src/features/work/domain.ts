@@ -165,6 +165,12 @@ export function validateRelations(records: WorkRecord[], candidate: WorkRecord) 
     if (id && !records.some((r) => r.id === id && r.kind === kind && !r.deletedAt))
       throw new Error('missing_relation');
   };
+  if (candidate.kind === 'event') {
+    const event = schemas.event.parse(candidate.data);
+    requireRef(event.taskId, 'task');
+    requireRef(event.projectId, 'project');
+    validateRule(event.recurrence);
+  }
   if (candidate.kind === 'task') {
     const task = taskData(candidate);
     requireRef(task.projectId, 'project');

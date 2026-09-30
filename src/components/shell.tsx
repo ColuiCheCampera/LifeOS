@@ -13,7 +13,7 @@ import {
 import { WorkOverlays } from '@/features/work/ui';
 import { useLocale } from 'next-intl';
 import { copy } from '@/features/work/copy';
-import { CheckSquare, Folder, ClipboardCheck } from 'lucide-react';
+import { CheckSquare, Folder, ClipboardCheck, CalendarDays } from 'lucide-react';
 import { useState } from 'react';
 import { purgeLocal, localSnapshot } from '@/features/sync/client';
 import { signOut } from 'next-auth/react';
@@ -34,6 +34,11 @@ export function Shell({
   const links = [
     { href: '/today', label: t('today'), icon: Sun },
     { href: '/tasks', label: c.tasks, icon: CheckSquare },
+    {
+      href: '/calendar',
+      label: useLocale() === 'en' ? 'Calendar' : 'Calendario',
+      icon: CalendarDays,
+    },
     { href: '/projects', label: c.projects, icon: Folder },
     { href: '/review', label: c.review, icon: ClipboardCheck },
     { href: '/settings', label: t('settings'), icon: SlidersHorizontal },
@@ -130,12 +135,14 @@ export function Shell({
         </footer>
       </div>
       <nav className="mobile-tabs" aria-label={t('mobileNavigation')}>
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} aria-current={path === href ? 'page' : undefined}>
-            <Icon size={21} />
-            <span>{label}</span>
-          </Link>
-        ))}
+        {links
+          .filter((l) => l.href !== '/review')
+          .map(({ href, label, icon: Icon }) => (
+            <Link key={href} href={href} aria-current={path === href ? 'page' : undefined}>
+              <Icon size={21} />
+              <span>{label}</span>
+            </Link>
+          ))}
       </nav>
     </div>
   );

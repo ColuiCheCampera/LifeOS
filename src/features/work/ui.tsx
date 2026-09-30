@@ -614,6 +614,7 @@ export function WorkOverlays() {
             </Button>
             {[
               ['/tasks', c.tasks],
+              ['/calendar', c.event],
               ['/projects', c.projects],
               ['/review', c.review],
               ['/settings', c.settings],
@@ -623,7 +624,12 @@ export function WorkOverlays() {
               </a>
             ))}
             {records
-              .filter((r) => !r.deletedAt && fuzzyScore(String(r.data.title), search) >= 0)
+              .filter(
+                (r) =>
+                  r.kind !== 'event' &&
+                  !r.deletedAt &&
+                  fuzzyScore(String(r.data.title), search) >= 0,
+              )
               .sort(
                 (a, b) =>
                   fuzzyScore(String(b.data.title), search) -

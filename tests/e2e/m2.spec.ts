@@ -51,7 +51,9 @@ test('offline edit survives reload, stays encrypted, and syncs exactly once on r
   await page.context().setOffline(true);
   await page.getByLabel('Fuso orario', { exact: true }).fill('Asia/Tokyo');
   await page.getByRole('button', { name: 'Salva modifiche' }).click();
-  await expect(page.getByRole('status')).toContainText('Salvato sul dispositivo');
+  await expect(page.locator('.save-bar').getByRole('status')).toContainText(
+    'Salvato sul dispositivo',
+  );
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Le tue preferenze, anche offline.' }),

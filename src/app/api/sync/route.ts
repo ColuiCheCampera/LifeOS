@@ -7,13 +7,15 @@ export const GET = (request: Request) =>
     const guard = await apiGuard(request);
     if (guard.response) return guard.response;
     const snapshot = await getSnapshot(guard.userId);
+    const params = new URL(request.url).searchParams;
+    const work = params.get('work') === '1' ? await getWork(guard.userId) : undefined;
+    if (work && params.get('calendar') !== '1')
+      work.records = work.records.filter((r) => r.kind !== 'event');
     return json({
       userId: guard.userId,
       expiresAt: Math.min(guard.expiresAt, Date.now() + snapshot.preferences.idleMinutes * 60000),
       snapshot,
-      ...(new URL(request.url).searchParams.get('work') === '1'
-        ? { work: await getWork(guard.userId) }
-        : {}),
+      ...(work ? { work } : {}),
     });
   });
 export const POST = (request: Request) =>

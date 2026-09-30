@@ -10,12 +10,14 @@ import {
   settings,
   mutationReceipts,
   auditLogs,
+  calendarEvents,
 } from '@/server/db/schema';
 import { getSettings } from '@/features/settings/service';
 import { tokenHash } from '@/server/security/policy';
 import { applyWork } from './domain';
 import { kindSchema, type Kind, type WorkRecord, type WorkMutation } from './schema';
 const tables = {
+  event: calendarEvents,
   task: tasks,
   project: projects,
   area: areas,

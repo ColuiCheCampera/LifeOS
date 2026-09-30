@@ -1,11 +1,12 @@
 import { z } from 'zod';
+import { eventSchema } from '@/features/calendar/schema';
 const title = z.string().trim().min(1).max(240);
 const text = z.string().max(8000);
 const reference = z.uuid().nullable();
 const date = z.iso.date().nullable();
 const time = z.iso.datetime().nullable();
 const position = z.number().finite().min(-1e15).max(1e15);
-export const kinds = ['task', 'project', 'area', 'milestone', 'filter'] as const;
+export const kinds = ['task', 'project', 'area', 'milestone', 'filter', 'event'] as const;
 export const kindSchema = z.enum(kinds);
 export type Kind = z.infer<typeof kindSchema>;
 export const taskSchema = z
@@ -76,6 +77,7 @@ export const filterSchema = z
   .object({ title, query: z.string().trim().min(1).max(300), position: position.default(0) })
   .strict();
 export const schemas = {
+  event: eventSchema,
   task: taskSchema,
   project: projectSchema,
   area: areaSchema,

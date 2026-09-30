@@ -1,6 +1,6 @@
 # LifeOS
 
-Personal life operating system. **Step 0 + M1–M3**: Google-only identity, strict account allowlist, database sessions, private app shell, editable settings, design system and CI. M2 adds an installable PWA, encrypted offline preferences and durable reconciliation. M3 implements tasks and projects. M4–M8 remain pending; no fake calendar/finance screens.
+Personal life operating system. **Step 0 + M1–M3 complete; M4 in progress**: Google-only identity, strict account allowlist, database sessions, private app shell, editable settings, design system and CI. M2 adds an installable PWA, encrypted offline preferences and durable reconciliation. M3 implements tasks and projects. The first M4 increment adds a local offline calendar, task time blocks and a separate Google Calendar consent/connection check. Google event synchronization and M5–M8 remain pending.
 
 ## Local setup
 
@@ -33,5 +33,9 @@ Install from the explicit browser prompt; iOS uses Share → Add to Home Screen.
 ## Tasks and projects (M3)
 
 Tasks, projects, editable areas and milestones now have real local-first CRUD, quick capture, saved filters, recurrence, a weekly review and keyboard/touch controls. Start with `/tasks` or `/projects`; see [usage and boundaries](docs/TASKS_PROJECTS.md).
+
+## Calendar (M4 in progress)
+
+Open `/calendar` for local events and task time blocks. Settings → Account connects Google Calendar and lists accessible calendars. **Events are not yet exchanged with Google.** Apply the new database migrations before running this version and register the additional OAuth callback. See [Calendar usage, setup and remaining M4 work](docs/CALENDAR.md).
 
 On the configured personal computer use `./Avvia-LifeOS.sh` (or `npm run local`). It starts the persistent local database, applies migrations and serves the app on loopback port 3000. It uses the private `.env.local`; never copy credentials into documentation or Git. Browser tests run on port 3100 and a separate disposable database.

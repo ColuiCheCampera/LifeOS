@@ -1,5 +1,6 @@
 export const copy = {
   it: {
+    event: 'Evento',
     deleteConfirm: 'Eliminare questo elemento? Potrai ripristinarlo dal Cestino entro 30 giorni.',
     settings: 'Impostazioni',
     expand: 'Espandi pannello',
@@ -128,6 +129,7 @@ export const copy = {
     more: 'Altre azioni',
   },
   en: {
+    event: 'Event',
     deleteConfirm: 'Delete this item? You can restore it from Trash within 30 days.',
     settings: 'Settings',
     expand: 'Expand sheet',

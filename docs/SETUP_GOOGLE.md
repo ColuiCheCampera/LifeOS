@@ -12,11 +12,11 @@ Source: https://developers.google.com/identity/protocols/oauth2 and https://deve
 
 ## Credentials and redirect URIs
 
-Create an OAuth client of type Web application. Set AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET server-side. Register exactly `http://localhost:3000/api/auth/callback/google` for local development and `https://YOUR_HOST/api/auth/callback/google` for production. Set AUTH_URL to the corresponding origin. Separate development and production clients are recommended.
+Create an OAuth client of type Web application. Set AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET server-side. Register exactly `http://localhost:3000/api/auth/callback/google` for local development and `https://YOUR_HOST/api/auth/callback/google` for production. For the separate Calendar consent, also register `http://localhost:3000/api/calendar/google/callback` and `https://YOUR_HOST/api/calendar/google/callback` on the corresponding client. Set AUTH_URL to the corresponding origin. Separate development and production clients are recommended.
 
 ## Enable Google Calendar API
 
-Enable Google Calendar API in APIs & Services → Library. Do not add its scope to the login request. M4 will request Calendar authorization only when Calendar is enabled in Settings.
+Enable Google Calendar API in APIs & Services → Library. Do not add its scope to the login request. Settings → Account → Connect Google Calendar requests Calendar authorization incrementally. The first M4 increment verifies consent and lists accessible calendars; it does not synchronize events yet.
 
 ## Find ALLOWED_GOOGLE_SUB and ALLOWED_EMAIL
 

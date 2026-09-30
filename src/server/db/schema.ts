@@ -160,3 +160,23 @@ export const projects = workTable('projects');
 export const areas = workTable('areas');
 export const milestones = workTable('milestones');
 export const savedFilters = workTable('saved_filters');
+export const calendarEvents = workTable('calendar_events');
+
+export const calendarConnections = pgTable(
+  'calendar_connections',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    refreshCipher: text('refresh_cipher'),
+    status: text('status').notNull().default('disconnected'),
+    stateHash: text('state_hash'),
+    verifierCipher: text('verifier_cipher'),
+    stateExpires: timestamp('state_expires', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('calendar_connections_user').on(t.userId),
+    check('calendar_connections_version_positive', sql`${t.version}>0`),
+  ],
+);

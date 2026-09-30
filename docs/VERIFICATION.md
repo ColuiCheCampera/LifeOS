@@ -1,3 +1,15 @@
+# M4 increment 1: local calendar and Google consent — 30 September 2026
+
+Implemented local offline events, five date-range views, recurring series, overlap/free-slot helpers, task time blocks, desktop day moves and an accessible event editor/trash. Added a separate Google Calendar consent flow and calendar metadata check in Settings. M4 remains in progress: no provider event import/export, two-way synchronization, watch channels or persistent worker is enabled.
+
+Validation: TypeScript, ESLint, Prettier, 117 unit tests, all 24 Chromium scenarios and the production PWA build passed. Selected coverage is 98.15% statements, 95.07% branches, 98.07% functions and 99.14% lines. Calendar domain coverage is 100% statements/lines, including exclusive all-day boundaries, both DST transitions, finite recurrence, overlapping intervals, free slots, move semantics and atomic schedule reconciliation.
+
+Browser tests verify offline create/edit/delete/restore, conflict indicators, task-linked free-slot placement, encrypted-queue replay without duplicate events and the legacy bootstrap response. OAuth coverage checks unauthenticated/CSRF rejection, cookie binding, hashed expiring one-use state, PKCE verifier encryption, unauthorized identity rejection, encrypted refresh persistence, disconnect cleanup and superseded callbacks. The service transport is mocked only inside the test harness; production keeps fixed Google HTTPS endpoints. Mobile axe reported zero violations, and the Calendar screenshot was visually inspected.
+
+The tests found and fixed task-position injection into new event mutations. Three older Settings assertions now specifically target their save-status region, since Calendar adds a separate connection-status region. Scope audit passed; production client JavaScript is 1,070 KiB gzip against the 1,200 KiB budget. Migrations 0003 and 0004 were applied only to the disposable test database. No real Google consent, personal database migration or deployment was performed. The additional OAuth redirect URI and remaining M4 scope are documented in CALENDAR.md and SETUP_GOOGLE.md.
+
+---
+
 # M3 subtasks and long lists — 29 September 2026
 
 Added direct subtask creation from task-row actions with parent/project prefilled, parent labels and completion counts for direct children. Parent selection excludes self and descendants while retaining the existing server checks. Windowed lists reserve a consistent 104px row plus 8px gap and reset their scroll position when filtering.
