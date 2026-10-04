@@ -2,7 +2,7 @@ import 'server-only';
 import { randomBytes, createHash } from 'node:crypto';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { db } from '@/server/db';
-import { calendarConnections as connections, auditLogs } from '@/server/db/schema';
+import { calendarConnections as connections, calendarSources, auditLogs } from '@/server/db/schema';
 import { env } from '@/server/env';
 import { encryptSecret, decryptSecret, tokenHash } from '@/server/security/policy';
 import { GoogleCalendarClient, GoogleError } from './google';
@@ -90,6 +90,10 @@ export async function finishCalendarConsent(userId: string, state: string, code:
       .where(and(eq(connections.userId, userId), eq(connections.version, claimed.version)))
       .returning({ id: connections.id });
     if (!rows.length) throw new Error('oauth_superseded');
+    await tx
+      .update(calendarSources)
+      .set({ watchNextRun: new Date(), watchError: null })
+      .where(eq(calendarSources.userId, userId));
     await tx
       .insert(auditLogs)
       .values({ userId, entityType: 'calendar_connection', action: 'calendar.connected' });

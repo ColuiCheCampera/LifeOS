@@ -160,4 +160,36 @@ describe('Google event transport', () => {
     });
     expect(String(request.mock.calls[2][0])).toContain('sendUpdates=none');
   });
+  it('creates expiring webhook channels and stops the exact provider resource', async () => {
+    const expiration = Date.now() + 86400000;
+    const request = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({ id: 'channel', resourceId: 'resource', expiration: String(expiration) }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = new GoogleCalendarClient(config, request);
+    expect(
+      await client.watch('access', 'test/@calendar', {
+        id: 'channel',
+        token: 'secret',
+        address: 'https://example.test/notify',
+        expiration,
+      }),
+    ).toEqual({ id: 'channel', resourceId: 'resource', expiration });
+    expect(String(request.mock.calls[0][0])).toContain('test%2F%40calendar/events/watch');
+    expect(JSON.parse(String(request.mock.calls[0][1]?.body))).toMatchObject({
+      type: 'web_hook',
+      token: 'secret',
+      expiration,
+    });
+    await client.stopWatch('access', 'channel', 'resource');
+    expect(String(request.mock.calls[1][0])).toBe(
+      'https://www.googleapis.com/calendar/v3/channels/stop',
+    );
+    expect(JSON.parse(String(request.mock.calls[1][1]?.body))).toEqual({
+      id: 'channel',
+      resourceId: 'resource',
+    });
+  });
 });

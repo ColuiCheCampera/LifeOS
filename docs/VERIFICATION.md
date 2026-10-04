@@ -1,3 +1,15 @@
+# M4 increment 4: Google watch channels — 4 October 2026
+
+Implemented opt-in Google server notifications with expiring channel registration, early renewal, best-effort replacement cleanup and exponential retry/jitter. The new callback uses a hashed per-channel secret, resource binding, expiry and connection version instead of browser credentials. Only authenticated signals schedule work; notification bodies never modify events. A durable generation counter preserves wake-ups arriving during synchronization. Polling continues every minute, including after channel failures.
+
+Validation: strict TypeScript, ESLint, Prettier, 131 unit tests, all 27 Chromium scenarios and the production PWA build passed. The watch scenario was rerun after refining retry scheduling and source/channel lock ordering. Selected domain/security coverage is 97.61% statements, 95.47% branches, 96.85% functions and 98.69% lines; database watch lifecycle logic is exercised by the integration scenario, outside that unit coverage set. Migration 0006 applied only to disposable PostgreSQL; regeneration reports no drift. Scope audit passed; production client JavaScript remains 1,077 KiB gzip against the 1,200 KiB budget.
+
+The new scenario exercises initial notification delivery before the watch response, hashed token storage, invalid secrets/resources/channel IDs/states/message numbers, duplicate/out-of-order suppression, high-precision message numbers, notification-to-worker import, a callback racing with an active pull, renewal failures with polling still usable, retry deadlines, successful replacement/stop, expiry, pause/resume, disconnect and reconnect. Existing browser scenarios continue to verify offline behavior, Calendar conflicts and mobile accessibility. Provider transport is mocked only in the isolated test process; the Next callback and domain/database services run normally.
+
+No public HTTPS endpoint, live Google channel, personal database migration or deployment was configured. `CALENDAR_PUSH_ENABLED` defaults to false; operators must apply migration 0006 and configure a public HTTPS origin to enable provisioning. Localhost keeps polling. Old/orphaned registrations may expire at Google when stop is unavailable, but local state rejects their callbacks. See CALENDAR.md for lifecycle and deployment details. Google recurring series and remaining M4 interface work are still pending.
+
+---
+
 # M4 increment 3: Today events and global search — 30 September 2026
 
 Today shows up to five ongoing/upcoming occurrences in a rolling 30-day window. It uses the configured timezone, includes local recurring events and already-imported Google events, and excludes ended/deleted events. Global search now matches event titles, locations and notes. Both surfaces reuse the extracted Calendar editor in place, retaining the existing encrypted offline queue, recurrence semantics and read-only restrictions.

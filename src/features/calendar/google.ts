@@ -149,6 +149,37 @@ export class GoogleCalendarClient {
   private eventsUrl(calendarId: string, eventId?: string) {
     return `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events${eventId ? '/' + encodeURIComponent(eventId) : ''}`;
   }
+  async watch(
+    accessToken: string,
+    calendarId: string,
+    channel: {
+      id: string;
+      token: string;
+      address: string;
+      expiration: number;
+    },
+  ) {
+    return z
+      .object({
+        id: z.string().max(64),
+        resourceId: z.string().min(1).max(1024),
+        expiration: z.coerce.number().int().positive().max(8640000000000000),
+      })
+      .parse(
+        await this.json(this.eventsUrl(calendarId) + '/watch', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...channel, type: 'web_hook' }),
+        }),
+      );
+  }
+  async stopWatch(accessToken: string, id: string, resourceId: string) {
+    await this.json('https://www.googleapis.com/calendar/v3/channels/stop', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, resourceId }),
+    });
+  }
   async events(accessToken: string, calendarId: string, syncToken?: string | null) {
     const events: ProviderEvent[] = [];
     const seen = new Set<string>();

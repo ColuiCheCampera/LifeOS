@@ -1,7 +1,9 @@
 import 'server-only';
-import { and, eq, sql, lte } from 'drizzle-orm';
+import { and, eq, sql, lte, gt } from 'drizzle-orm';
 import { v7 as uuidv7 } from 'uuid';
 import { db, pool } from '@/server/db';
+import { env } from '@/server/env';
+import { ensureWatch } from './watch';
 import {
   calendarSources as sources,
   calendarBindings as bindings,
@@ -9,6 +11,7 @@ import {
   calendarConnections as connections,
   settings,
   auditLogs,
+  calendarChannels,
 } from '@/server/db/schema';
 import { calendarAccess, calendarClient, listGoogleCalendars } from './connection';
 import { GoogleError } from './google';
@@ -279,6 +282,14 @@ export async function configureSource(userId: string, remoteId: string, enabled:
         .where(and(eq(sources.userId, userId), eq(sources.remoteId, remoteId)))
         .returning({ id: sources.id });
       if (!rows.length) throw new Error('calendar_not_available');
+      await tx
+        .update(calendarChannels)
+        .set({
+          status: 'retired',
+          updatedAt: new Date(),
+          version: sql`${calendarChannels.version}+1`,
+        })
+        .where(and(eq(calendarChannels.userId, userId), eq(calendarChannels.sourceId, rows[0].id)));
       await tx.insert(auditLogs).values({
         userId,
         entityType: 'calendar_source',
@@ -312,6 +323,7 @@ export async function configureSource(userId: string, remoteId: string, enabled:
           timezone: calendar.timeZone ?? 'Europe/Rome',
           color: calendar.backgroundColor,
           nextRun: new Date(),
+          watchNextRun: new Date(),
           updatedAt: new Date(),
           version: sql`${sources.version}+1`,
         },
@@ -431,6 +443,24 @@ export async function resolveConflict(
   });
 }
 export async function syncStatus(userId: string) {
+  const liveChannels = await db
+    .select({ sourceId: calendarChannels.sourceId, expiresAt: calendarChannels.expiresAt })
+    .from(calendarChannels)
+    .innerJoin(
+      connections,
+      and(
+        eq(connections.userId, userId),
+        eq(connections.version, calendarChannels.connectionVersion),
+        eq(connections.status, 'connected'),
+      ),
+    )
+    .where(
+      and(
+        eq(calendarChannels.userId, userId),
+        eq(calendarChannels.status, 'active'),
+        gt(calendarChannels.expiresAt, new Date()),
+      ),
+    );
   const calendars = await db
     .select({
       id: sources.id,
@@ -442,6 +472,7 @@ export async function syncStatus(userId: string) {
       lastSynced: sources.lastSynced,
       nextRun: sources.nextRun,
       error: sources.error,
+      watchError: sources.watchError,
     })
     .from(sources)
     .where(eq(sources.userId, userId));
@@ -466,6 +497,9 @@ export async function syncStatus(userId: string) {
   return {
     sources: calendars.map((c) => ({
       ...c,
+      pushExpiresAt: c.enabled
+        ? (liveChannels.find((channel) => channel.sourceId === c.id)?.expiresAt ?? null)
+        : null,
       unsupported: mirrors.filter((b) => b.sourceId === c.id && b.state === 'unsupported').length,
       conflicts: mirrors.filter((b) => b.sourceId === c.id && b.state === 'conflict').length,
     })),
@@ -482,7 +516,7 @@ export async function requestSync(userId: string) {
   await db.transaction(async (tx) => {
     await tx
       .update(sources)
-      .set({ nextRun: new Date() })
+      .set({ nextRun: new Date(), notificationVersion: sql`${sources.notificationVersion}+1` })
       .where(and(eq(sources.userId, userId), eq(sources.enabled, true)));
     await tx
       .insert(auditLogs)
@@ -505,6 +539,12 @@ export async function syncSource(userId: string, sourceId: string) {
     if (!source) return;
     try {
       const access = await calendarAccess(userId);
+      if (env.CALENDAR_PUSH_ENABLED === 'true')
+        await ensureWatch(
+          source,
+          access,
+          new URL('/api/calendar/google/notifications', env.AUTH_URL).href,
+        );
       const api = calendarClient();
       const calendar = (await api.calendars(access.accessToken)).find(
         (c) => c.id === source.remoteId,
@@ -577,7 +617,7 @@ export async function syncSource(userId: string, sourceId: string) {
         .update(sources)
         .set({
           lastSynced: new Date(),
-          nextRun: new Date(Date.now() + 60000),
+          nextRun: sql`CASE WHEN ${sources.notificationVersion} = ${source.notificationVersion} THEN ${new Date(Date.now() + 60000)}::timestamptz ELSE now() END`,
           failures: 0,
           error: null,
         })

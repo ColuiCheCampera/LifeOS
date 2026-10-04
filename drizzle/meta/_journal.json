@@ -43,6 +43,13 @@
       "when": 1790754065653,
       "tag": "0005_broken_living_tribunal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791118597317,
+      "tag": "0006_loving_bloodstrike",
+      "breakpoints": true
     }
   ]
 }

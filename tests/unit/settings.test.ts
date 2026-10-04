@@ -37,6 +37,14 @@ describe('settings schema', () => {
   });
 });
 describe('boot environment', () => {
+  it('disables push by default and requires HTTPS when explicitly enabled', () => {
+    expect(readEnv(testEnv).CALENDAR_PUSH_ENABLED).toBe('false');
+    expect(() => readEnv({ ...testEnv, CALENDAR_PUSH_ENABLED: 'true' })).toThrow('HTTPS');
+    expect(
+      readEnv({ ...testEnv, CALENDAR_PUSH_ENABLED: 'true', AUTH_URL: 'https://lifeos.test' })
+        .CALENDAR_PUSH_ENABLED,
+    ).toBe('true');
+  });
   it('validates required config', () =>
     expect(readEnv(testEnv).ALLOWED_EMAIL).toBe('owner@example.test'));
   it('does not print values on failure', () => {

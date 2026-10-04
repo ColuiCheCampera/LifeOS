@@ -201,6 +201,9 @@ export const calendarSources = pgTable(
     lastSynced: timestamp('last_synced', { withTimezone: true }),
     failures: integer('failures').notNull().default(0),
     error: text('error'),
+    watchNextRun: timestamp('watch_next_run', { withTimezone: true }).notNull().defaultNow(),
+    watchError: text('watch_error'),
+    notificationVersion: integer('notification_version').notNull().default(0),
   },
   (t) => [
     uniqueIndex('calendar_sources_user_remote').on(t.userId, t.remoteId),
@@ -228,5 +231,29 @@ export const calendarBindings = pgTable(
     uniqueIndex('calendar_bindings_remote').on(t.userId, t.sourceId, t.remoteId),
     uniqueIndex('calendar_bindings_event').on(t.userId, t.eventId),
     index('calendar_bindings_source').on(t.userId, t.sourceId),
+  ],
+);
+
+export const calendarChannels = pgTable(
+  'calendar_channels',
+  {
+    ...metadata(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sourceId: uuid('source_id')
+      .notNull()
+      .references(() => calendarSources.id, { onDelete: 'cascade' }),
+    connectionVersion: integer('connection_version').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    resourceId: text('resource_id'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    status: text('status').notNull().default('pending'),
+    lastMessage: text('last_message').notNull().default('0'),
+  },
+  (t) => [
+    index('calendar_channels_source').on(t.userId, t.sourceId),
+    index('calendar_channels_expiration').on(t.status, t.expiresAt),
+    check('calendar_channels_version_positive', sql`${t.version}>0`),
   ],
 );

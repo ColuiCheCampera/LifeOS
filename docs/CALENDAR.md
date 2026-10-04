@@ -1,6 +1,6 @@
-# Calendar — M4 increments 1–3
+# Calendar — M4 increments 1–4
 
-M4 is in progress. Local calendars and two-way synchronization of nonrecurring Google events are available; recurring Google series and watch channels remain pending.
+M4 is in progress. Local calendars, two-way synchronization of nonrecurring Google events and optional Google watch channels are available; recurring Google series remain pending.
 
 ## Available now
 
@@ -45,9 +45,20 @@ Tokens and cursors remain server-side. The browser receives safe source state an
 ## Remaining M4 work
 
 - Google recurring series/exceptions, richer reminder synchronization and supported guest-edit workflows.
-- Authenticated watch channels with renewal; the current durable scheduler uses PostgreSQL source deadlines rather than the originally planned pg-boss queue.
 - Hourly timeline move/resize and touch creation gestures with visible keyboard alternatives; configurable dashboard widget order/visibility.
 
 Do not label M4 complete until those paths and their failure/replay tests are implemented. No personal Google account or personal database was used during automated testing.
+
+## Optional Google push updates
+
+After migration 0006, set `CALENDAR_PUSH_ENABLED=true` in the worker environment only when `AUTH_URL` is a publicly reachable HTTPS origin with a valid certificate. The worker derives `/api/calendar/google/notifications` from this origin; it does not accept callback URLs from clients. Leave the setting false for ordinary localhost use. This feature is server-to-server Calendar change notification, not browser/phone reminder delivery (M8).
+
+The worker requests 24-hour channels and replaces them one hour before their effective expiry, honoring shorter provider lifetimes. Creation/renewal failures use exponential backoff with jitter; failures within the previous 24 hours contribute to the delay and a successful registration resets that sequence. A failed renewal keeps the preceding active channel usable. Periodic synchronization every minute remains enabled even with push, so missed callbacks, failed renewals and worker restarts do not depend on a notification being redelivered. The source panel reports push/polling status without revealing channel credentials.
+
+The callback is a narrow provider-authenticated exception to browser session/Origin checks. It requires a random per-channel secret (only its SHA-256 hash is retained), matching channel/resource IDs, a live expiration, an enabled source and the connection version that created it. It is globally rate-limited. It accepts no event payload and never follows provider-supplied URLs. An initial `sync` arriving before the watch response is acknowledged but cannot establish the resource binding. Duplicate/out-of-order message numbers are acknowledged without rescheduling; accepted notifications append audit metadata and advance a durable source generation. A notification arriving during a sync schedules another pass rather than being overwritten by its completion. Existing quota backoff is preserved.
+
+Renewal retires the old channel locally and attempts Google's stop operation. Pause rejects its channels immediately; disconnect/reconnect invalidates their connection version. A paused channel, a failed stop or an uncertain/lost watch response may remain registered at Google until its requested expiry (at most 24 hours), but cannot authorize local work. Disabling the environment setting stops provisioning/renewal; existing valid channels remain usable until expiry unless the source is paused or disconnected. Historical channel metadata is retained; pruning is not implemented. A session-capable PostgreSQL connection is still required for worker advisory locks.
+
+No real public callback or Google account was configured in development. Protocol handling, early notifications, expiry, renewal, replay and recovery are covered by isolated provider-transport tests. Live HTTPS delivery must be verified after deployment. See [Google's push protocol](https://developers.google.com/workspace/calendar/api/guides/push).
 
 Protocol references: [Google web-server authorization](https://developers.google.com/identity/protocols/oauth2/web-server), [incremental Calendar sync](https://developers.google.com/workspace/calendar/api/guides/sync), [conditional event patches](https://developers.google.com/workspace/calendar/api/v3/reference/events/patch), [Calendar watch channels](https://developers.google.com/workspace/calendar/api/guides/push).

@@ -16,6 +16,8 @@ type Status = {
     role: string;
     lastSynced: string | null;
     error: string | null;
+    watchError: string | null;
+    pushExpiresAt: string | null;
     unsupported: number;
     conflicts: number;
   }[];
@@ -201,6 +203,27 @@ export function CalendarSyncPanel() {
               {t(
                 'Scambio non riuscito. Il worker riproverà; controlla il collegamento se il problema persiste.',
                 'Sync failed. The worker will retry; check the connection if the problem persists.',
+              )}
+            </p>
+          )}
+          <p>
+            {!s.enabled
+              ? t('Aggiornamenti sospesi.', 'Updates paused.')
+              : s.pushExpiresAt
+                ? t(
+                    'Aggiornamenti automatici Google attivi, con controllo periodico di recupero.',
+                    'Google push updates active, with periodic recovery polling.',
+                  )
+                : t(
+                    'Aggiornamenti Google tramite controllo periodico.',
+                    'Google updates use periodic polling.',
+                  )}
+          </p>
+          {s.enabled && s.watchError && (
+            <p>
+              {t(
+                'Canale push non disponibile: il controllo periodico continua e il worker riproverà.',
+                'Push channel unavailable: polling continues and the worker will retry.',
               )}
             </p>
           )}

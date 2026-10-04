@@ -13,6 +13,7 @@ const schema = z.object({
     .regex(/^[A-Za-z0-9+/]{43}=$/)
     .refine((v) => Buffer.from(v, 'base64').length === 32),
   DEMO_MODE: z.enum(['true', 'false']).default('false'),
+  CALENDAR_PUSH_ENABLED: z.enum(['true', 'false']).default('false'),
 });
 export function readEnv(source: Record<string, string | undefined> = process.env) {
   const result = schema.safeParse(source);
@@ -22,6 +23,8 @@ export function readEnv(source: Record<string, string | undefined> = process.env
     );
   if (source.NODE_ENV === 'production' && !result.data.AUTH_URL.startsWith('https://'))
     throw new Error('Production AUTH_URL requires HTTPS');
+  if (result.data.CALENDAR_PUSH_ENABLED === 'true' && !result.data.AUTH_URL.startsWith('https://'))
+    throw new Error('Calendar push requires HTTPS AUTH_URL');
   return result.data;
 }
 export const env = readEnv();

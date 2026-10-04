@@ -18,6 +18,8 @@ M4 increments 1–2 are implemented: `calendar_events` participates in the encry
 
 ## Deployment and testing
 
+M4 increment 4 adds optional Google watch channels. The persistent worker registers/renews channels; an uncached, rate-limited callback authenticates a hashed per-channel secret and schedules incremental reads. It is a provider-authenticated exception to browser session/Origin checks, with no event payload processing. Connection versions invalidate old grants; source notification generations preserve callbacks that race with sync completion. Channel failures do not disable polling. HTTPS provisioning is opt-in; see CALENDAR.md for lifecycle and deployment limits.
+
 M4 increment 3 adds a Today event list and global event search over the same encrypted work snapshot. The shared Calendar editor is reused in place from all three surfaces, so there is one validation/write path for offline edits and read-only provider events. Shared work components also ship in the standalone offline document: keep them independent of Next router components and server runtime globals.
 
 Docker runs standalone Next.js as an unprivileged user, alongside PostgreSQL. Migrations run explicitly before traffic. Vercel uses a managed PostgreSQL connection and Node runtime; never use an ephemeral local database. Keep encryption keys in a secret manager with backups and rotation procedures.

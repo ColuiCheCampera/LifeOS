@@ -71,6 +71,21 @@ async function main() {
             await sync.configureSource(rows[0].id, 'test-calendar', true);
           if (body.action === 'sync') await sync.syncSource(rows[0].id, body.sourceId!);
           if (body.action === 'jobs') await sync.runCalendarJobs();
+          if (body.action === 'watch') {
+            const { db } = await import('../src/server/db');
+            const { calendarSources } = await import('../src/server/db/schema');
+            const { eq } = await import('drizzle-orm');
+            const { ensureWatch } = await import('../src/features/calendar/watch');
+            const [source] = await db
+              .select()
+              .from(calendarSources)
+              .where(eq(calendarSources.id, body.sourceId!));
+            await ensureWatch(
+              source,
+              await service.calendarAccess(rows[0].id),
+              'https://app.example.test/api/calendar/google/notifications',
+            );
+          }
           if (body.action === 'finish')
             await service.finishCalendarConsent(rows[0].id, body.state, body.code);
           if (body.action === 'calendars')

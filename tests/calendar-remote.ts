@@ -2,6 +2,15 @@ import { http, HttpResponse } from 'msw';
 import { providerEventSchema, type ProviderEvent } from '../src/features/calendar/provider-schema';
 const items = new Map<string, { event: ProviderEvent; revision: number }>();
 let revision = 0;
+const watches: {
+  id: string;
+  token: string;
+  address: string;
+  expiration: number;
+  resourceId: string;
+  earlyStatus?: number;
+}[] = [];
+const stopped: string[] = [];
 export const calendarRemote = {
   role: 'owner',
   expire: false,
@@ -9,6 +18,8 @@ export const calendarRemote = {
   raceWrite: false,
   pageSize: 2500,
   quota: false,
+  watchFail: false,
+  notifyDuringPull: false,
 };
 export function setRemoteEvent(value: Record<string, unknown>) {
   const old = items.get(String(value.id))?.event;
@@ -26,6 +37,8 @@ export function controlRemote(action: string, event?: Record<string, unknown>) {
   if (action === 'reset') {
     items.clear();
     revision = 0;
+    watches.length = 0;
+    stopped.length = 0;
     Object.assign(calendarRemote, {
       role: 'owner',
       expire: false,
@@ -33,16 +46,59 @@ export function controlRemote(action: string, event?: Record<string, unknown>) {
       raceWrite: false,
       pageSize: 2500,
       quota: false,
+      watchFail: false,
+      notifyDuringPull: false,
     });
   }
   if (action === 'set' && event) setRemoteEvent(event);
   if (action === 'remove' && event) items.delete(String(event.id));
   if (action === 'fault' && event) Object.assign(calendarRemote, event);
-  return { events: [...items.values()].map((i) => i.event) };
+  return { events: [...items.values()].map((i) => i.event), watches, stopped };
 }
 const collection = 'https://www.googleapis.com/calendar/v3/calendars/:calendarId/events';
 export const calendarRemoteHandlers = [
-  http.get(collection, ({ request }) => {
+  http.post(collection + '/watch', async ({ request }) => {
+    if (calendarRemote.watchFail) return HttpResponse.json({ error: 'quota' }, { status: 429 });
+    const body = (await request.json()) as (typeof watches)[number];
+    const watch = { ...body, resourceId: 'resource-' + body.id };
+    watches.push(watch);
+    const early = await fetch('http://localhost:3100/api/calendar/google/notifications', {
+      method: 'POST',
+      headers: {
+        'x-goog-channel-id': watch.id,
+        'x-goog-channel-token': watch.token,
+        'x-goog-resource-id': watch.resourceId,
+        'x-goog-resource-state': 'sync',
+        'x-goog-message-number': '1',
+      },
+    });
+    watch.earlyStatus = early.status;
+    return HttpResponse.json({
+      id: watch.id,
+      resourceId: watch.resourceId,
+      expiration: String(watch.expiration),
+    });
+  }),
+  http.post('https://www.googleapis.com/calendar/v3/channels/stop', async ({ request }) => {
+    const body = (await request.json()) as { id: string };
+    stopped.push(body.id);
+    return new HttpResponse(null, { status: 204 });
+  }),
+  http.get(collection, async ({ request }) => {
+    if (calendarRemote.notifyDuringPull && watches.length) {
+      calendarRemote.notifyDuringPull = false;
+      const watch = watches.at(-1)!;
+      await fetch('http://localhost:3100/api/calendar/google/notifications', {
+        method: 'POST',
+        headers: {
+          'x-goog-channel-id': watch.id,
+          'x-goog-channel-token': watch.token,
+          'x-goog-resource-id': watch.resourceId,
+          'x-goog-resource-state': 'exists',
+          'x-goog-message-number': '99999999999999999999',
+        },
+      });
+    }
     if (calendarRemote.quota) return HttpResponse.json({ error: 'quota' }, { status: 429 });
     const url = new URL(request.url);
     if (calendarRemote.expire && url.searchParams.has('syncToken')) {
