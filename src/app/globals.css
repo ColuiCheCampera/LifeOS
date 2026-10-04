@@ -2278,6 +2278,41 @@ html[data-font='large'] .nav-link {
 .calendar-provider select {
   max-width: 100%;
 }
+.today-events {
+  margin-block: 20px;
+}
+.today-events header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.today-events ol {
+  list-style: none;
+  padding: 0;
+  margin-block: 16px;
+}
+.today-events li {
+  padding-block: 8px;
+  border-top: 1px solid var(--border);
+}
+.today-event-open {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  gap: 5px;
+  min-height: 44px;
+  padding: 12px;
+  text-align: start;
+  border-radius: 12px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.today-event-open:hover {
+  background: var(--surface-soft);
+}
 .calendar-provider .calendar-toolbar label {
   min-width: 0;
   max-width: 100%;

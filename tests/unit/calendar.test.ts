@@ -8,6 +8,8 @@ import {
   moveSchedule,
   occurrences,
   overlaps,
+  upcomingEvents,
+  eventSearchScore,
 } from '@/features/calendar/domain';
 import { applyWork } from '@/features/work/domain';
 import type { WorkRecord, WorkMutation } from '@/features/work/schema';
@@ -31,6 +33,42 @@ function event(patch = {}): WorkRecord {
   };
 }
 describe('calendar intervals and views', () => {
+  it('selects ongoing and upcoming occurrences, excludes ended/deleted events and caps results', () => {
+    const past = event({ schedule: { ...schedule, end: '2026-03-28T08:30:00Z' } });
+    const ongoing = event();
+    const recurring = event({ title: 'Series', recurrence: 'FREQ=DAILY;COUNT=8' });
+    const deleted = { ...event(), deletedAt: '2026-03-28T08:00:00Z' };
+    const items = upcomingEvents(
+      [past, ongoing, recurring, deleted],
+      '2026-03-28T08:30:00Z',
+      'Europe/Rome',
+    );
+    expect(items).toHaveLength(5);
+    expect(items.some((item) => item.record.id === past.id || item.record.id === deleted.id)).toBe(
+      false,
+    );
+    expect(items.some((item) => item.record.id === ongoing.id)).toBe(true);
+    expect(items.some((item) => item.start === '2026-03-29T07:00:00Z')).toBe(true);
+  });
+  it('uses the selected timezone and exclusive all-day end, and searches accented event metadata', () => {
+    const day = event({
+      title: 'Caffè',
+      location: 'Biblioteca',
+      notes: 'Portare documenti',
+      schedule: {
+        start: '2026-03-29',
+        end: '2026-03-30',
+        timezone: 'Europe/Rome',
+        allDay: true,
+      },
+    });
+    expect(upcomingEvents([day], '2026-03-29T21:59:59Z', 'Europe/Rome')).toHaveLength(1);
+    expect(upcomingEvents([day], '2026-03-29T22:00:00Z', 'Europe/Rome')).toHaveLength(0);
+    expect(eventSearchScore(day, 'caffe')).toBeGreaterThanOrEqual(0);
+    expect(eventSearchScore(day, 'biblioteca')).toBeGreaterThanOrEqual(0);
+    expect(eventSearchScore(day, 'documenti')).toBeGreaterThanOrEqual(0);
+    expect(eventSearchScore(day, 'zzzzzz')).toBeLessThan(0);
+  });
   it('rejects invalid intervals, dates and zones', () => {
     for (const patch of [
       { end: schedule.start },

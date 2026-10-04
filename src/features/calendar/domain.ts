@@ -2,6 +2,23 @@ import { Temporal } from '@js-temporal/polyfill';
 import { rrulestr } from 'rrule';
 import { eventSchema, type Schedule } from './schema';
 import type { WorkRecord } from '@/features/work/schema';
+import { fuzzyScore } from '@/features/work/domain';
+
+export function upcomingEvents(records: WorkRecord[], now: string, timezone: string, limit = 5) {
+  const end = Temporal.Instant.from(now)
+    .toZonedDateTimeISO(timezone)
+    .add({ days: 30 })
+    .toInstant()
+    .toString();
+  return occurrences(records, now, end).slice(0, limit);
+}
+export function eventSearchScore(record: WorkRecord, query: string) {
+  const title = fuzzyScore(String(record.data.title), query);
+  if (title >= 0) return title;
+  return Math.max(
+    ...['location', 'notes'].map((field) => fuzzyScore(String(record.data[field] ?? ''), query)),
+  );
+}
 
 export type Occurrence = { record: WorkRecord; start: string; end: string; key: string };
 export function bounds(schedule: Schedule) {

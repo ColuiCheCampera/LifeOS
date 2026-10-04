@@ -18,5 +18,7 @@ M4 increments 1–2 are implemented: `calendar_events` participates in the encry
 
 ## Deployment and testing
 
+M4 increment 3 adds a Today event list and global event search over the same encrypted work snapshot. The shared Calendar editor is reused in place from all three surfaces, so there is one validation/write path for offline edits and read-only provider events. Shared work components also ship in the standalone offline document: keep them independent of Next router components and server runtime globals.
+
 Docker runs standalone Next.js as an unprivileged user, alongside PostgreSQL. Migrations run explicitly before traffic. Vercel uses a managed PostgreSQL connection and Node runtime; never use an ephemeral local database. Keep encryption keys in a secret manager with backups and rotation procedures.
 Vitest tests pure security and validation logic; PostgreSQL integration tests exercise the real adapter. Playwright uses real HTTP requests and an isolated signed OIDC issuer for allowed/rejected users. MSW supplies external HTTP mocks for unit tests. CI runs all checks and scope/bundle/dependency audits.

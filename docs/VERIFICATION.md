@@ -1,3 +1,15 @@
+# M4 increment 3: Today events and global search — 30 September 2026
+
+Today shows up to five ongoing/upcoming occurrences in a rolling 30-day window. It uses the configured timezone, includes local recurring events and already-imported Google events, and excludes ended/deleted events. Global search now matches event titles, locations and notes. Both surfaces reuse the extracted Calendar editor in place, retaining the existing encrypted offline queue, recurrence semantics and read-only restrictions.
+
+Validation: strict TypeScript, ESLint, Prettier, 129 unit tests, all 26 Chromium scenarios and production PWA build passed. Selected coverage: 97.60% statements, 95.43% branches, 96.80% functions and 98.68% lines. Calendar domain statement/line coverage is 100%. Tests cover ongoing boundaries, exclusive all-day ends, recurrence across DST, result limits and accent-insensitive event search. The new browser scenario edits an event from Today offline, finds it by location, opens its notes in the shared editor and verifies persistence after reconnect/reload. Mobile axe reports zero violations; the screenshot was visually inspected.
+
+Full-suite testing caught a Next Link runtime dependency entering the standalone offline bundle; the shared widget uses a standard anchor. Existing offline reload, expired-lease, task and capture tests all pass after the fix. The Settings conflict test now creates a real concurrent update before replaying the stale version, rather than subtracting one from a possibly initial version.
+
+Scope audit passed. Production client JavaScript is 1,077 KiB gzip against the 1,200 KiB ceiling. No schema migration, live Google call, personal database change or deployment was performed. Google recurring series, watch channels, timeline gestures and dashboard customization remain pending within M4.
+
+---
+
 # M4 increment 2: two-way Google synchronization — 30 September 2026
 
 Added calendar selection/pause, nonrecurring event import and explicit publication, source colors, Meet links, read-only access, and conflict previews with local-copy preservation. A persistent worker stores cursors/retries in PostgreSQL, merges disjoint edits, uses conditional writes and deterministic creation IDs, and recovers expired cursors without dropping pending local changes. Local launcher and Compose include the worker; manual/Vercel setup is documented in CALENDAR.md. M4 remains in progress for Google recurring series, watch channels and richer timeline gestures.

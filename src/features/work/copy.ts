@@ -97,7 +97,7 @@ export const copy = {
     filters: 'Filtri salvati',
     all: 'Tutte',
     palette: 'Cerca e comandi',
-    paletteHint: 'Cerca attività e progetti o scegli un’azione',
+    paletteHint: 'Cerca attività, progetti ed eventi o scegli un’azione',
     shortcuts: 'Scorciatoie',
     shortcutHint:
       'N: nuova attività · Ctrl/Cmd+K: cerca · ?: aiuto · Esc: chiudi. Su mobile: scorri a destra per completare, a sinistra per modificare; tieni premuto per selezionare.',
@@ -226,7 +226,7 @@ export const copy = {
     filters: 'Saved filters',
     all: 'All',
     palette: 'Search and commands',
-    paletteHint: 'Search tasks and projects or choose an action',
+    paletteHint: 'Search tasks, projects and events or choose an action',
     shortcuts: 'Keyboard shortcuts',
     shortcutHint:
       'N: new task · Ctrl/Cmd+K: search · ?: help · Esc: close. On mobile: swipe right to complete, left to edit; hold to select.',

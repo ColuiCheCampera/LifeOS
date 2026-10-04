@@ -33,6 +33,10 @@ import {
 } from './domain';
 import { copy, type Copy } from './copy';
 import { applyBatch } from './batch';
+import { TodayEvents } from '@/features/calendar/today';
+import { EventEditor } from '@/features/calendar/editor';
+import { eventSchema } from '@/features/calendar/schema';
+import { eventSearchScore } from '@/features/calendar/domain';
 const views = [
   'inbox',
   'today',
@@ -423,6 +427,11 @@ export function WorkOverlays() {
   const captureInput = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState('');
   const [edit, setEdit] = useState<Edit | null>(null);
+  const [eventEdit, setEventEdit] = useState<WorkRecord | null>(null);
+  const score = (record: WorkRecord) =>
+    record.kind === 'event'
+      ? eventSearchScore(record, search)
+      : fuzzyScore(String(record.data.title), search);
   const [error, setError] = useState('');
   const parsed = useMemo(() => {
     try {
@@ -624,17 +633,8 @@ export function WorkOverlays() {
               </a>
             ))}
             {records
-              .filter(
-                (r) =>
-                  r.kind !== 'event' &&
-                  !r.deletedAt &&
-                  fuzzyScore(String(r.data.title), search) >= 0,
-              )
-              .sort(
-                (a, b) =>
-                  fuzzyScore(String(b.data.title), search) -
-                  fuzzyScore(String(a.data.title), search),
-              )
+              .filter((r) => !r.deletedAt && score(r) >= 0)
+              .sort((a, b) => score(b) - score(a))
               .slice(0, 50)
               .map((r) => (
                 <button
@@ -642,7 +642,8 @@ export function WorkOverlays() {
                   key={r.id}
                   onClick={() => {
                     setPalette(false);
-                    setEdit({ kind: r.kind, record: r });
+                    if (r.kind === 'event') setEventEdit(r);
+                    else setEdit({ kind: r.kind, record: r });
                   }}
                 >
                   <span>{String(r.data.title)}</span>
@@ -658,6 +659,14 @@ export function WorkOverlays() {
         </Dialog>
       )}
       {edit && <Editor edit={edit} records={records} close={() => setEdit(null)} />}
+      {eventEdit && (
+        <EventEditor
+          record={eventEdit}
+          initial={eventSchema.parse(eventEdit.data)}
+          records={records}
+          onClose={() => setEventEdit(null)}
+        />
+      )}
     </>
   );
 }
@@ -1129,6 +1138,7 @@ export function WorkApp({ mode = 'tasks' }: { mode?: 'tasks' | 'projects' | 'tod
         </div>
       </div>
       <SyncPanel />
+      {mode === 'today' && <TodayEvents />}
       <div className="work-status">
         <span role="status">{notice}</span>
         {undo && (

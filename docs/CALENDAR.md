@@ -1,10 +1,14 @@
-# Calendar — M4 increments 1–2
+# Calendar — M4 increments 1–3
 
 M4 is in progress. Local calendars and two-way synchronization of nonrecurring Google events are available; recurring Google series and watch channels remain pending.
 
 ## Available now
 
 Open `/calendar` from desktop navigation or the mobile Calendar tab. Day, three-day, week, month and 30-day agenda views display events from the encrypted local work snapshot. On narrow screens the day columns stack into a readable list. Week/month alignment uses the configured first day of week. Times use the configured display timezone; the event keeps its own timezone.
+
+Today shows up to five ongoing/upcoming occurrences in the next 30 days, including local recurring events and Google events already imported. Ended and deleted events are excluded; the list refreshes every 30 seconds and on window focus. Dates use the configured display timezone. Open an item to view/edit it with the same Calendar editor, without leaving the current page; this works in an unlocked offline tab. Google read-only restrictions and whole-series local recurrence editing still apply. Meet links open separately when available. This list is based on the encrypted snapshot, not a fresh provider availability query.
+
+Global Search and commands (Ctrl/Cmd+K) includes events by title, location and notes, ignoring accents and case. Results exclude deleted records, show the Event type and open the shared event editor. Local task/project behavior is unchanged. Search operates on the current encrypted work snapshot and works offline.
 
 Create and edit titles, notes, locations, color, start/end, all-day dates, RRULE, and task/project links. The end date of an all-day event is exclusive. Timed input rejects ambiguous/nonexistent local times; recurring events retain wall-clock time through daylight-saving changes. Editing/deleting a recurring event applies to its complete series. Deletions can be restored for 30 days. Drafts remain in memory until saved; closing a changed draft asks before discarding it.
 
@@ -42,7 +46,7 @@ Tokens and cursors remain server-side. The browser receives safe source state an
 
 - Google recurring series/exceptions, richer reminder synchronization and supported guest-edit workflows.
 - Authenticated watch channels with renewal; the current durable scheduler uses PostgreSQL source deadlines rather than the originally planned pg-boss queue.
-- Hourly timeline move/resize and touch creation gestures with visible keyboard alternatives; global event search and Today event widgets.
+- Hourly timeline move/resize and touch creation gestures with visible keyboard alternatives; configurable dashboard widget order/visibility.
 
 Do not label M4 complete until those paths and their failure/replay tests are implemented. No personal Google account or personal database was used during automated testing.
 

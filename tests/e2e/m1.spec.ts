@@ -71,11 +71,20 @@ test('allowed signed OIDC login, settings persistence, conflict and CSRF protect
       })
     ).status(),
   ).toBe(403);
+  // Create a real concurrent update; version 1 minus 1 is invalid, not stale.
   expect(
     (
       await page.request.patch('/api/settings', {
         headers: { Origin: testEnv.AUTH_URL },
-        data: { ...current, version: current.version - 1 },
+        data: current,
+      })
+    ).status(),
+  ).toBe(200);
+  expect(
+    (
+      await page.request.patch('/api/settings', {
+        headers: { Origin: testEnv.AUTH_URL },
+        data: current,
       })
     ).status(),
   ).toBe(409);

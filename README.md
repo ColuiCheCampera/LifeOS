@@ -38,4 +38,6 @@ Tasks, projects, editable areas and milestones now have real local-first CRUD, q
 
 Open `/calendar` for local events and task time blocks. Connect Google Calendar in Settings → Account, then select calendars in the Calendar page. Nonrecurring events synchronize through the separate worker; publication of local events is explicit, and conflicting changes have a review panel. Apply the new database migrations and register the additional OAuth callback. For manual development run `npm run worker:calendar` alongside the web server; the local launcher and Docker Compose start it automatically. See [Calendar usage, setup and remaining M4 work](docs/CALENDAR.md).
 
+Today now shows ongoing/upcoming events from the encrypted local snapshot. Global search includes event titles, locations and notes; both surfaces open the same event editor and remain usable in an unlocked offline tab.
+
 On the configured personal computer use `./Avvia-LifeOS.sh` (or `npm run local`). It starts the persistent local database, applies migrations and serves the app on loopback port 3000. It uses the private `.env.local`; never copy credentials into documentation or Git. Browser tests run on port 3100 and a separate disposable database.
